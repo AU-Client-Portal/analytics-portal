@@ -1,6 +1,8 @@
 'use client';
 
-import Linkify from 'react-linkify';
+import ReactLinkify from 'react-linkify';
+
+const Linkify = ReactLinkify as any;
 
 export default function Error({
   error,
@@ -14,7 +16,7 @@ export default function Error({
       <div className="flex flex-col max-w-84 p-8 border-red-600 border">
         <p className="mb-2 [&>a:hover]:underline [&>a]:block">
           <Linkify
-            componentDecorator={(decoratedHref, decoratedText, key) => (
+            componentDecorator={(decoratedHref: string, decoratedText: string, key: number) => (
               <a target="blank" href={decoratedHref} key={key}>
                 {decoratedText}
               </a>
