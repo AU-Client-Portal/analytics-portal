@@ -1,21 +1,38 @@
 import { copilotApi } from 'copilot-node-sdk';
 import { need } from '@/utils/need';
 
-/**
- * A helper function that instantiates the Copilot SDK and fetches data
- * from the Copilot API based on the contents of the token that gets
- * passed to your app in the searchParams.
- */
+async function attachCustomFields(
+  copilot: ReturnType<typeof copilotApi>,
+  company: any,
+) {
+  try {
+    const response = await fetch(
+      `https://api.copilot.app/v1/companies/${company.id}`,
+      {
+        headers: {
+          'X-API-Key': process.env.COPILOT_API_KEY!,
+        },
+      }
+    );
+
+    const data = await response.json();
+    company.customFields = data.customFields ?? data.custom_fields ?? {};
+  } catch (err) {
+    console.error('Failed to fetch custom field values:', err);
+    company.customFields = {};
+  }
+
+  return company;
+}
+
 export async function getSession(searchParams: SearchParams) {
-  // apiKey needs to be defined inside the function so we get the
-  // error boundary page instead of a vercel error.
   const apiKey = need<string>(
     process.env.COPILOT_API_KEY,
     'COPILOT_API_KEY is required, guide available at: https://docs.copilot.app/docs/custom-apps-setting-up-your-first-app#step-2-register-your-app-and-get-an-api-key',
   );
 
   const copilot = copilotApi({
-    apiKey: apiKey,
+    apiKey,
     token:
       'token' in searchParams && typeof searchParams.token === 'string'
         ? searchParams.token
@@ -30,15 +47,15 @@ export async function getSession(searchParams: SearchParams) {
   } = {
     workspace: await copilot.retrieveWorkspace(),
   };
+
   const tokenPayload = await copilot.getTokenPayload?.();
 
   if (tokenPayload?.clientId) {
     data.client = await copilot.retrieveClient({ id: tokenPayload.clientId });
   }
   if (tokenPayload?.companyId) {
-    data.company = await copilot.retrieveCompany({
-      id: tokenPayload.companyId,
-    });
+    const company = await copilot.retrieveCompany({ id: tokenPayload.companyId });
+    data.company = await attachCustomFields(copilot, company);
   }
   if (tokenPayload?.internalUserId) {
     data.internalUser = await copilot.retrieveInternalUser({
@@ -47,4 +64,46 @@ export async function getSession(searchParams: SearchParams) {
   }
 
   return data;
+}
+
+export async function getSessionFromRoute(searchParams: URLSearchParams) {
+  const rawToken = searchParams.get('token');
+  const token =
+    rawToken && rawToken !== 'null' && rawToken !== 'undefined'
+      ? rawToken
+      : undefined;
+
+  if (!token && process.env.COPILOT_ENV === 'local' && process.env.DEV_COMPANY_ID) {
+    const apiKey = need<string>(
+      process.env.COPILOT_API_KEY,
+      'COPILOT_API_KEY is required',
+    );
+
+    const copilot = copilotApi({ apiKey });
+
+    const [workspace, company] = await Promise.all([
+      copilot.retrieveWorkspace(),
+      copilot.retrieveCompany({ id: process.env.DEV_COMPANY_ID }),
+    ]);
+
+    const companyWithFields = await attachCustomFields(copilot, company);
+
+    return { workspace, company: companyWithFields };
+  }
+
+  return getSession(token ? { token } : {});
+}
+
+export function getCompanyConfig(session: Awaited<ReturnType<typeof getSession>>) {
+  if (!session.company) return null;
+
+  const fields = (session.company as any).customFields ?? {};
+
+  return {
+    companyId: session.company.id,
+    name: (session.company as any).name ?? 'Unknown Company',
+    ga4PropertyId: fields.ga4PropertyId ?? fields.ga4Propertyid ?? null,
+    adsCustomerId: fields.adsCustomerId ?? fields.adsCustomerid ?? null,
+    metricoolBlogId: fields.metricoolBlogId ?? fields.metricoolBlogid ?? null,
+  };
 }

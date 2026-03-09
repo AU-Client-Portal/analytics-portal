@@ -10,12 +10,11 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@google-analytics/data": "^4.0.0",
     "copilot-design-system": "^0.6.23",
     "copilot-node-sdk": "^3.5.1",
-    "@google-analytics/data": "^4.0.0",
-    "google-ads-api": "^21.0.1",
-    "recharts": "^2.5.0",
     "copy-container-react": "^1.0.11",
+    "google-ads-api": "^21.0.1",
     "next": "^14.1.0",
     "open": "^10.1.0",
     "prettier-plugin-tailwindcss": "^0.5.12",
@@ -23,6 +22,7 @@
     "react-code-blocks": "^0.1.6",
     "react-dom": "^18.2.0",
     "react-linkify": "^1.0.0-alpha",
+    "recharts": "^2.5.0",
     "zod": "^3.22.4"
   },
   "devDependencies": {
