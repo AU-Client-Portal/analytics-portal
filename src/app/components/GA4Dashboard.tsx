@@ -252,12 +252,12 @@ export function GA4Dashboard() {
       .then(r => r.json())
       .then(({ preferences: p }) => {
         if (!p) return;
-        if (p.theme && THEME_TW[p.theme]) setTheme(p.theme);
+        if (p.theme && THEME_TW[p.theme as Theme]) setTheme(p.theme as Theme);
         if (p.heroMetrics?.length === 3) setHeroMetrics(p.heroMetrics);
         localStorage.setItem('dashboard-prefs', JSON.stringify(p));
       })
       .catch(() => {});
-  }, []);
+  }, [token]);
 
   const savePreferences = useCallback((prefs: DashboardPreferences) => {
     localStorage.setItem('dashboard-prefs', JSON.stringify(prefs));
