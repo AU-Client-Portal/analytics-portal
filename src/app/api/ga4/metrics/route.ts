@@ -23,11 +23,10 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const serviceAccount = JSON.parse(process.env.GA4_SERVICE_ACCOUNT!);
     const analyticsDataClient = new BetaAnalyticsDataClient({
       credentials: {
-        client_email: serviceAccount.client_email,
-        private_key: serviceAccount.private_key,
+        client_email: process.env.GA4_CLIENT_EMAIL!,
+        private_key: process.env.GA4_PRIVATE_KEY!.replace(/\\n/g, '\n'),
       },
     });
 
