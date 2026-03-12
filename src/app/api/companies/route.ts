@@ -7,8 +7,12 @@ export async function GET(request: NextRequest) {
   try {
     const session = await getSessionFromRoute(request.nextUrl.searchParams);
 
-    if (!session.workspace) {
+    if (session.company) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    if (!session.workspace) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const res = await fetch('https://api.copilot.app/v1/companies?limit=100', {

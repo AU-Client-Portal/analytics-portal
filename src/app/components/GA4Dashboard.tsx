@@ -388,6 +388,7 @@ function DateRangePicker({ startDate, endDate, compareMode, onApply, tw, raw, on
     WebkitAppearance: 'none' as const,
   };
   return (
+
     <div className={`${tw.card} border ${tw.border}`} style={{
       position: 'fixed',
       bottom: 'auto',
@@ -399,6 +400,7 @@ function DateRangePicker({ startDate, endDate, compareMode, onApply, tw, raw, on
       boxShadow: '0 16px 48px rgba(0,0,0,0.28)',
       zIndex: 300,
       width: 'min(320px, calc(100vw - 32px))',
+
       left: 'auto',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
@@ -425,7 +427,6 @@ function DateRangePicker({ startDate, endDate, compareMode, onApply, tw, raw, on
           <label style={{ color: raw.subtext, fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>End date</label>
           <input type="date" value={e} min={s} max={today} onChange={ev => setE(ev.target.value)} style={inputStyle} />
         </div>
-
         <div style={{ height: 1, background: raw.border, margin: '2px 0' }} />
 
         <div>
@@ -603,7 +604,7 @@ export function GA4Dashboard() {
   }, [token]);
 
   useEffect(() => {
-    if (!token || USE_MOCK) return;
+    if (USE_MOCK) return;
     fetch(`/api/companies?token=${token}`)
       .then(r => r.ok ? r.json() : null)
       .then(d => { if (d?.companies) { setIsAdmin(true); setCompanies(d.companies); } })
@@ -716,7 +717,6 @@ export function GA4Dashboard() {
 
   return (
     <div className={`min-h-screen ${tw.bg} transition-colors duration-300`} style={{ color: raw.text }}>
-
       {showPicker && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
           onClick={e => { if (e.target === e.currentTarget) setShowPicker(false); }}>
@@ -768,7 +768,6 @@ export function GA4Dashboard() {
           </div>
         </div>
       )}
-
       <header className={`sticky top-0 z-50 ${tw.headerBg} px-3 md:px-8 py-3`}>
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-2 flex-wrap">
@@ -790,7 +789,6 @@ export function GA4Dashboard() {
                 {saveStatus === 'saved' ? '✓ Saved' : '⚠ Save failed'}
               </span>
             )}
-
             <div className="flex gap-1 flex-wrap">
               {PRESET_RANGES.map((r, i) => (
                 <button key={i} onClick={() => { setSelectedPreset(i); setShowDatePicker(false); savePreferences({ theme, heroMetrics, mapCountry, compareMode, selectedPreset: i }); }}
@@ -799,7 +797,6 @@ export function GA4Dashboard() {
                 </button>
               ))}
             </div>
-
             <div style={{ position: 'relative' }}>
               <button
                 onClick={() => setShowDatePicker(!showDatePicker)}
@@ -831,7 +828,6 @@ export function GA4Dashboard() {
                 </>
               )}
             </div>
-
             <div className={`flex gap-0.5 p-1 rounded-xl border ${tw.border} ${tw.card}`}>
               {THEMES.map(th => (
                 <button key={th.id} onClick={() => changeTheme(th.id)} title={th.label}
@@ -843,9 +839,7 @@ export function GA4Dashboard() {
           </div>
         </div>
       </header>
-
       <main className="max-w-7xl mx-auto px-3 md:px-8 py-8 space-y-6">
-
         {prev && (
           <div className={`${tw.card} border ${tw.border} rounded-xl px-4 py-2.5 flex items-center gap-2 text-xs flex-wrap`}
             style={{ borderLeft: `3px solid ${raw.ring1}` }}>
@@ -856,8 +850,6 @@ export function GA4Dashboard() {
             <span className={tw.subtext}>Deltas reflect change vs. comparison period</span>
           </div>
         )}
-
-        {/* Hero rings */}
         <ShineCard shineColor={raw.shineColor} className={`${tw.card} border ${tw.border} rounded-2xl p-6 md:p-8`}>
           <div className="flex items-center justify-between mb-6 md:mb-8">
             <p className={`${tw.subtext} text-xs font-bold uppercase tracking-widest`}>Key Highlights · {activeLabel}</p>
@@ -878,7 +870,6 @@ export function GA4Dashboard() {
             })}
           </div>
         </ShineCard>
-
         {CARD_METRICS.length > 0 && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
             {CARD_METRICS.map((c: any, i: number) => (
@@ -886,7 +877,6 @@ export function GA4Dashboard() {
             ))}
           </div>
         )}
-
         {ts.length > 0 && (
           <ShineCard shineColor={raw.shineColor} className={`${tw.card} border ${tw.border} rounded-2xl p-4 md:p-6`}>
             <p className={`${tw.subtext} text-xs font-bold uppercase tracking-widest mb-5`}>Traffic Over Time</p>
@@ -904,7 +894,6 @@ export function GA4Dashboard() {
             </ResponsiveContainer>
           </ShineCard>
         )}
-
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {data.trafficSources.length > 0 && (
             <ShineCard shineColor={raw.shineColor} className={`${tw.card} border ${tw.border} rounded-2xl p-6`}>
@@ -956,7 +945,6 @@ export function GA4Dashboard() {
             </ShineCard>
           )}
         </div>
-
         {data.callEvents && data.callEvents.length > 0 ? (
           <ShineCard shineColor={raw.shineColor} className={`${tw.card} border ${tw.border} rounded-2xl p-6`}>
             <div className="flex items-center gap-2 mb-4">
@@ -985,25 +973,21 @@ export function GA4Dashboard() {
             </div>
           </ShineCard>
         )}
-
         <ShineCard shineColor={raw.shineColor} className={`${tw.card} border ${tw.border} rounded-2xl p-4 md:p-8`}>
           <GoogleAdsMetrics
             dateRange={{ start: activeStart, end: activeEnd }}
             theme={theme} themeStyles={{ ...tw, chartGrid: raw.border, accentText: tw.accentText }}
           />
         </ShineCard>
-
         <ShineCard shineColor={raw.shineColor} className={`${tw.card} border ${tw.border} rounded-2xl p-4 md:p-8`}>
           <MetricoolMetrics
             dateRange={{ start: activeStart, end: activeEnd }}
             theme={theme} themeStyles={{ ...tw, chartGrid: raw.border, accentText: tw.accentText }}
           />
         </ShineCard>
-
         {data.topPages.length > 0 && (
           <TopPagesSection pages={data.topPages} tw={tw} raw={raw} />
         )}
-
         {data.countries.length > 0 && (
           <ShineCard shineColor={raw.shineColor} className={`${tw.card} border ${tw.border} rounded-2xl p-4 md:p-6`}>
             <p className={`${tw.subtext} text-xs font-bold uppercase tracking-widest mb-5`}>Global Audience</p>

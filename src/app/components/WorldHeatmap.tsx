@@ -70,11 +70,13 @@ export const WorldHeatmap = forwardRef<{ getSelectedCountry: () => string | null
   const [Geographies, setGeographies] = useState<any>(null);
   const [Geography, setGeography] = useState<any>(null);
   const [ZoomableGroup, setZoomableGroup] = useState<any>(null);
+  const [mapLoadError, setMapLoadError] = useState(false);
   const [hovered, setHovered] = useState<{ name: string; users: number } | null>(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
   const [selectedCountry, setSelectedCountry] = useState<string | null>(initialCountry);
   const [mapZoom, setMapZoom] = useState(1);
   const [mapCenter, setMapCenter] = useState<[number, number]>([0, 10]);
+
   const [isMobile, setIsMobile] = useState(false);
 
   useImperativeHandle(ref, () => ({
@@ -114,7 +116,7 @@ export const WorldHeatmap = forwardRef<{ getSelectedCountry: () => string | null
       setGeographies(() => mod.Geographies);
       setGeography(() => mod.Geography);
       setZoomableGroup(() => mod.ZoomableGroup);
-    });
+    }).catch(() => setMapLoadError(true));
   }, []);
 
   function getFillWorld(geoName: string): { data: CountryData | null; color: string; isFlagged: boolean } {
@@ -154,6 +156,30 @@ export const WorldHeatmap = forwardRef<{ getSelectedCountry: () => string | null
     setMapCenter([0, 10]);
     setMapZoom(1);
   }
+
+  if (mapLoadError) return (
+    <div>
+      <div style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6, color: C.legendDim, fontSize: 12 }}>
+        <Globe size={13} />
+        <span>Map unavailable — showing country breakdown</span>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {ranked.slice(0, 15).map((c, i) => {
+          const pct = Math.sqrt(c.users / maxUsers) * 100;
+          return (
+            <div key={c.country} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ width: 24, fontSize: 10, fontWeight: 700, color: C.legendDim, textAlign: 'right', flexShrink: 0 }}>#{i + 1}</span>
+              <span style={{ width: 140, fontSize: 12, color: C.panel.text, flexShrink: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.country}</span>
+              <div style={{ flex: 1, height: 6, background: C.border, borderRadius: 3, overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${pct}%`, background: C.high, borderRadius: 3 }} />
+              </div>
+              <span style={{ fontSize: 12, fontWeight: 700, color: C.panel.accent, flexShrink: 0, minWidth: 40, textAlign: 'right' }}>{c.users.toLocaleString()}</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 
   if (!ComposableMap) return (
     <div style={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -278,7 +304,6 @@ export const WorldHeatmap = forwardRef<{ getSelectedCountry: () => string | null
               </ZoomableGroup>
             </ComposableMap>
           )}
-
           {hovered && (
             <div style={{
               position: 'absolute',
@@ -302,12 +327,12 @@ export const WorldHeatmap = forwardRef<{ getSelectedCountry: () => string | null
             </div>
           )}
         </div>
-
         {selectedCountry && (
           drilldownItems.length > 0 ? (
             <div style={{
               background: C.panel.bg, border: `1px solid ${C.panel.border}`,
               borderRadius: 12, padding: '14px 16px',
+
               maxHeight: isMobile ? 'none' : 400,
               overflowY: isMobile ? 'visible' : 'auto',
             }}>
