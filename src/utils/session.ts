@@ -18,7 +18,6 @@ async function attachCustomFields(
     const data = await response.json();
     company.customFields = data.customFields ?? data.custom_fields ?? {};
   } catch (err) {
-    console.error('Failed to fetch custom field values:', err);
     company.customFields = {};
   }
 
@@ -73,25 +72,29 @@ export async function getSessionFromRoute(searchParams: URLSearchParams) {
       ? rawToken
       : undefined;
 
-  if (!token && process.env.COPILOT_ENV === 'local' && process.env.DEV_COMPANY_ID) {
-    const apiKey = need<string>(
-      process.env.COPILOT_API_KEY,
-      'COPILOT_API_KEY is required',
-    );
+  if (!token) {
+    if (process.env.COPILOT_ENV === 'local' && process.env.DEV_COMPANY_ID) {
+      const apiKey = need<string>(
+        process.env.COPILOT_API_KEY,
+        'COPILOT_API_KEY is required',
+      );
 
-    const copilot = copilotApi({ apiKey });
+      const copilot = copilotApi({ apiKey });
 
-    const [workspace, company] = await Promise.all([
-      copilot.retrieveWorkspace(),
-      copilot.retrieveCompany({ id: process.env.DEV_COMPANY_ID }),
-    ]);
+      const [workspace, company] = await Promise.all([
+        copilot.retrieveWorkspace(),
+        copilot.retrieveCompany({ id: process.env.DEV_COMPANY_ID }),
+      ]);
 
-    const companyWithFields = await attachCustomFields(copilot, company);
+      const companyWithFields = await attachCustomFields(copilot, company);
 
-    return { workspace, company: companyWithFields };
+      return { workspace, company: companyWithFields };
+    }
+
+    return { workspace: { id: 'admin' } as any };
   }
 
-  return getSession(token ? { token } : {});
+  return getSession({ token });
 }
 
 export function getCompanyConfig(session: Awaited<ReturnType<typeof getSession>>) {
