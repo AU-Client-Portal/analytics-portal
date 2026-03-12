@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Users, FileText, Heart, Radio, ThumbsUp, MessageCircle, Instagram, Linkedin, Facebook, Twitter } from 'lucide-react';
+import { Users, FileText, Heart, Radio, ThumbsUp, MessageCircle, Instagram, Linkedin, Facebook, Twitter, Share2, Eye } from 'lucide-react';
 import { MOCK_METRICOOL } from './mockData';
 import type { Theme } from './GA4Dashboard';
 
@@ -39,7 +39,13 @@ function NetworkIcon({ network }: { network: string }) {
   return <Radio size={13} />;
 }
 
-// Animated stat card
+function fmtNum(n: number | undefined): string {
+  if (n === undefined || n === null) return '—';
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 10_000)    return `${Math.round(n / 1000)}K`;
+  return n.toLocaleString();
+}
+
 function SocialCard({ title, value, icon, index, accentColor, t }: {
   title: string; value: string; icon: React.ReactNode;
   index: number; accentColor: string; t: any;
@@ -63,20 +69,30 @@ function SocialCard({ title, value, icon, index, accentColor, t }: {
         boxShadow: hovered ? `0 10px 36px ${accentColor}30` : '0 1px 4px rgba(0,0,0,0.05)',
         borderColor: hovered ? accentColor : undefined,
       }}
-      className={`${t.card} border ${t.border} rounded-2xl p-5 cursor-default`}
+      className={`${t.card} border ${t.border} rounded-2xl p-3 md:p-5 cursor-default`}
     >
-      <div className="flex items-start justify-between mb-3">
-        <span className={`${t.subtext} text-xs font-semibold uppercase tracking-widest`}>{title}</span>
-        <span style={{ color: accentColor, transform: hovered ? 'scale(1.25) rotate(-8deg)' : 'scale(1)', transition: 'transform 0.3s cubic-bezier(0.34,1.56,0.64,1)', opacity: hovered ? 1 : 0.5 }}>
+      <div className="flex items-start justify-between mb-2">
+        <span className={`${t.subtext} font-semibold uppercase tracking-widest leading-tight`} style={{ fontSize: 10 }}>{title}</span>
+        <span style={{ color: accentColor, transform: hovered ? 'scale(1.25) rotate(-8deg)' : 'scale(1)', transition: 'transform 0.3s cubic-bezier(0.34,1.56,0.64,1)', opacity: hovered ? 1 : 0.5, flexShrink: 0, marginLeft: 4 }}>
           {icon}
         </span>
       </div>
-      <p className={`${t.text} text-2xl font-bold tracking-tight`} style={{ color: hovered ? accentColor : undefined, transition: 'color 0.2s' }}>{value}</p>
+      <p
+        className={`${t.text} font-bold tracking-tight`}
+        style={{
+          fontSize: 'clamp(0.9rem, 4vw, 1.5rem)',
+          wordBreak: 'break-all',
+          color: hovered ? accentColor : undefined,
+          transition: 'color 0.2s',
+          lineHeight: 1.15,
+        }}
+      >
+        {value}
+      </p>
     </div>
   );
 }
 
-// Animated post card
 function PostCard({ post, index, colors, t }: { post: any; index: number; colors: any; t: any }) {
   const [visible, setVisible] = useState(false);
   const [hovered, setHovered] = useState(false);
@@ -101,7 +117,6 @@ function PostCard({ post, index, colors, t }: { post: any; index: number; colors
       className={`${t.card} border ${t.border} rounded-2xl p-4`}
     >
       <div className="flex items-start gap-3">
-        {/* Network badge */}
         <div style={{
           width: 34, height: 34, borderRadius: 10, background: `${netColor}18`,
           border: `1.5px solid ${netColor}40`, display: 'flex', alignItems: 'center',
@@ -111,7 +126,6 @@ function PostCard({ post, index, colors, t }: { post: any; index: number; colors
         }}>
           <NetworkIcon network={post.network} />
         </div>
-
         <div className="flex-1 min-w-0">
           <p className={`${t.text} text-sm font-medium leading-snug line-clamp-2`}>{post.text}</p>
           <div className="flex items-center gap-3 mt-2">
@@ -119,27 +133,23 @@ function PostCard({ post, index, colors, t }: { post: any; index: number; colors
             <span className={`${t.subtext} text-xs`}>{post.date}</span>
           </div>
         </div>
-
-        {/* Engagement stats */}
         {(post.likes !== undefined || post.comments !== undefined) && (
           <div className="flex flex-col gap-1.5 shrink-0 items-end">
             {post.likes !== undefined && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                 <ThumbsUp size={11} style={{ color: colors.ring1 }} />
-                <span style={{ fontSize: 12, fontWeight: 700, color: colors.ring1 }}>{post.likes.toLocaleString()}</span>
+                <span style={{ fontSize: 12, fontWeight: 700, color: colors.ring1 }}>{fmtNum(post.likes)}</span>
               </div>
             )}
             {post.comments !== undefined && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                 <MessageCircle size={11} style={{ color: colors.ring2 }} />
-                <span style={{ fontSize: 12, fontWeight: 700, color: colors.ring2 }}>{post.comments.toLocaleString()}</span>
+                <span style={{ fontSize: 12, fontWeight: 700, color: colors.ring2 }}>{fmtNum(post.comments)}</span>
               </div>
             )}
           </div>
         )}
       </div>
-
-      {/* Engagement bar */}
       {post.likes !== undefined && (
         <div style={{ marginTop: 10, height: 3, background: colors.track, borderRadius: 2, overflow: 'hidden' }}>
           <div style={{
@@ -168,7 +178,7 @@ export function MetricoolMetrics({ dateRange, theme, themeStyles: t }: Props) {
       try {
         if (USE_MOCK) {
           await new Promise(r => setTimeout(r, 700));
-          setData(MOCK_METRICOOL);
+          setData(MOCK_METRICOOL as any);
           return;
         }
         const token = searchParams.get('token');
@@ -200,7 +210,7 @@ export function MetricoolMetrics({ dateRange, theme, themeStyles: t }: Props) {
 
   const stats = data.stats || {};
   const posts = data.posts || [];
-  const cardAccents = [colors.ring1, colors.ring2, colors.ring3, colors.ring4];
+  const cardAccents = [colors.ring1, colors.ring2, colors.ring3, colors.ring4, colors.ring1, colors.ring2];
 
   return (
     <div className="space-y-8">
@@ -209,11 +219,13 @@ export function MetricoolMetrics({ dateRange, theme, themeStyles: t }: Props) {
         <p className={`${t.subtext} text-xs mt-0.5`}>Powered by Metricool · Blog ID: {data.blogId}</p>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <SocialCard title="Followers"   value={stats.totalFollowers?.toLocaleString() || '—'}                  icon={<Users size={16}/>}    index={0} accentColor={cardAccents[0]} t={t} />
-        <SocialCard title="Total Posts" value={stats.totalPosts?.toLocaleString() || '—'}                      icon={<FileText size={16}/>} index={1} accentColor={cardAccents[1]} t={t} />
-        <SocialCard title="Engagement"  value={stats.engagementRate ? `${stats.engagementRate.toFixed(2)}%` : '—'} icon={<Heart size={16}/>}   index={2} accentColor={cardAccents[2]} t={t} />
-        <SocialCard title="Total Reach" value={stats.totalReach?.toLocaleString() || '—'}                      icon={<Radio size={16}/>}    index={3} accentColor={cardAccents[3]} t={t} />
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-3">
+        <SocialCard title="Followers"    value={fmtNum(stats.totalFollowers)}                                  icon={<Users size={15}/>}    index={0} accentColor={cardAccents[0]} t={t} />
+        <SocialCard title="Total Posts"  value={fmtNum(stats.totalPosts)}                                      icon={<FileText size={15}/>} index={1} accentColor={cardAccents[1]} t={t} />
+        <SocialCard title="Total Reach"  value={fmtNum(stats.totalReach)}                                      icon={<Eye size={15}/>}      index={2} accentColor={cardAccents[2]} t={t} />
+        <SocialCard title="Engagement"   value={stats.engagementRate ? `${stats.engagementRate.toFixed(2)}%` : '—'} icon={<Heart size={15}/>}  index={3} accentColor={cardAccents[3]} t={t} />
+        <SocialCard title="Impressions"  value={fmtNum(stats.totalImpressions)}                                icon={<Radio size={15}/>}    index={4} accentColor={cardAccents[4]} t={t} />
+        <SocialCard title="Shares"       value={fmtNum(stats.totalShares)}                                     icon={<Share2 size={15}/>}   index={5} accentColor={cardAccents[5]} t={t} />
       </div>
 
       {posts.length > 0 && (

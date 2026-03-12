@@ -1,31 +1,10 @@
-// ─────────────────────────────────────────────────────────────────────────────
-// mockData.ts  –  Development test fixtures for GA4, Google Ads & Metricool
-// ─────────────────────────────────────────────────────────────────────────────
-
-// ---------------------------------------------------------------------------
-// GA4 Dashboard  (GA4Dashboard.tsx)
-// ---------------------------------------------------------------------------
-// Shape: GA4Data
-//   companyId, companyName
-//   dateRange: { startDate, endDate }
-//   metrics: { activeUsers, sessions, pageViews, avgSessionDuration,
-//               bounceRate (string "0-100"), newUsers, engagementRate (string) }
-//   timeSeries: Array<{ date (YYYYMMDD), activeUsers, sessions, pageViews }>
-//   topPages:   Array<{ title, path, views }>
-//   trafficSources: Array<{ source, sessions }>
-//   devices:    Array<{ device, users }>
-//   countries:  Array<{ country, users }>
-// ---------------------------------------------------------------------------
-
 function yyyymmdd(daysAgo: number): string {
   const d = new Date();
   d.setDate(d.getDate() - daysAgo);
   return d.toISOString().slice(0, 10).replace(/-/g, '');
 }
 
-// 30-day time series with realistic variance
 const timeSeries = Array.from({ length: 30 }, (_, i) => {
-  const base = 30 - i; // older = lower index
   const rand = (lo: number, hi: number) => Math.floor(lo + Math.random() * (hi - lo));
   const activeUsers = rand(280, 620) + Math.floor(Math.sin(i / 4) * 80);
   const sessions    = Math.floor(activeUsers * (1.2 + Math.random() * 0.4));
@@ -42,48 +21,61 @@ export const MOCK_GA4 = {
     endDate:   yyyymmdd(0),
   },
 
+  previousDateRange: {
+    startDate: yyyymmdd(60),
+    endDate:   yyyymmdd(31),
+  },
+
   metrics: {
     activeUsers:        8_423,
     sessions:          10_187,
     pageViews:         27_654,
-    avgSessionDuration: 142,        // seconds
-    bounceRate:        '34.7',      // string percentage
+    avgSessionDuration: 142,
+    bounceRate:        '34.7',
     newUsers:           5_318,
-    engagementRate:    '71.2',      // string percentage
+    engagementRate:    '71.2',
+  },
+
+  previousMetrics: {
+    activeUsers:        7_210,
+    sessions:           8_940,
+    pageViews:         23_100,
+    avgSessionDuration: 128,
+    bounceRate:        '41.2',
+    newUsers:           4_650,
+    engagementRate:    '64.8',
   },
 
   timeSeries,
 
   topPages: [
-    { title: 'Home',                   path: '/',                      views: 9_340 },
-    { title: 'Services',               path: '/services',              views: 4_812 },
-    { title: 'About Us',               path: '/about',                 views: 3_205 },
-    { title: 'Blog: SEO in 2025',      path: '/blog/seo-2025',        views: 2_671 },
-    { title: 'Contact',                path: '/contact',               views: 2_144 },
-    { title: 'Pricing',                path: '/pricing',               views: 1_988 },
-    { title: 'Case Studies',           path: '/case-studies',          views: 1_503 },
-    { title: 'Blog: GA4 Migration',    path: '/blog/ga4-migration',   views: 1_097 },
-    { title: 'Portfolio',              path: '/portfolio',             views:   894 },
-    { title: 'Privacy Policy',         path: '/privacy',               views:   435 },
+    { title: 'Home',                path: '/',                   views: 9_340 },
+    { title: 'Services',            path: '/services',           views: 4_812 },
+    { title: 'About Us',            path: '/about',              views: 3_205 },
+    { title: 'Blog: SEO in 2025',   path: '/blog/seo-2025',     views: 2_671 },
+    { title: 'Contact',             path: '/contact',            views: 2_144 },
+    { title: 'Pricing',             path: '/pricing',            views: 1_988 },
+    { title: 'Case Studies',        path: '/case-studies',       views: 1_503 },
+    { title: 'Blog: GA4 Migration', path: '/blog/ga4-migration', views: 1_097 },
+    { title: 'Portfolio',           path: '/portfolio',          views:   894 },
+    { title: 'Privacy Policy',      path: '/privacy',            views:   435 },
   ],
 
   trafficSources: [
-    { source: 'Organic Search',  sessions: 4_210 },
-    { source: 'Direct',          sessions: 2_340 },
-    { source: 'Paid Search',     sessions: 1_620 },
-    { source: 'Social',          sessions:   980 },
-    { source: 'Referral',        sessions:   740 },
-    { source: 'Email',           sessions:   297 },
+    { source: 'Organic Search', sessions: 4_210 },
+    { source: 'Direct',         sessions: 2_340 },
+    { source: 'Paid Search',    sessions: 1_620 },
+    { source: 'Social',         sessions:   980 },
+    { source: 'Referral',       sessions:   740 },
+    { source: 'Email',          sessions:   297 },
   ],
 
-  // BarChart: dataKey="device", dataKey="users"
   devices: [
     { device: 'desktop', users: 4_890 },
     { device: 'mobile',  users: 3_102 },
     { device: 'tablet',  users:   431 },
   ],
 
-  // WorldHeatmap: country name + users count
   countries: [
     { country: 'United States',  users: 3_850 },
     { country: 'United Kingdom', users: 1_240 },
@@ -101,25 +93,30 @@ export const MOCK_GA4 = {
     { country: 'Singapore',      users:    82 },
     { country: 'South Africa',   users:    73 },
   ],
+
+  regions: [
+    { country: 'United States', region: 'California',  users: 980 },
+    { country: 'United States', region: 'Texas',       users: 620 },
+    { country: 'United States', region: 'New York',    users: 540 },
+    { country: 'United States', region: 'Florida',     users: 410 },
+    { country: 'United States', region: 'Illinois',    users: 310 },
+    { country: 'United States', region: 'Washington',  users: 280 },
+    { country: 'United States', region: 'Colorado',    users: 210 },
+    { country: 'United Kingdom', region: 'England',    users: 890 },
+    { country: 'United Kingdom', region: 'Scotland',   users: 210 },
+    { country: 'United Kingdom', region: 'Wales',      users:  90 },
+    { country: 'Canada', region: 'Ontario',            users: 420 },
+    { country: 'Canada', region: 'British Columbia',   users: 240 },
+    { country: 'Canada', region: 'Quebec',             users: 160 },
+  ],
+
+  callEvents: [
+    { event: 'phone_call',        count: 87 },
+    { event: 'call_button_click', count: 134 },
+    { event: 'call_connected',    count: 62 },
+    { event: 'call_duration_30s', count: 48 },
+  ],
 };
-
-
-// ---------------------------------------------------------------------------
-// Google Ads  (GoogleAdsMetrics.tsx)
-// ---------------------------------------------------------------------------
-// Shape: GoogleAdsData
-//   companyId, companyName, customerId
-//   hasGoogleAds?: boolean   (false → "not configured" screen)
-//   dateRange: { startDate, endDate }
-//   metrics?: {
-//     impressions, clicks, ctr, cost,
-//     conversions, conversionsValue, averageCpc
-//   }
-//   campaigns?: Array<{
-//     id, name, status,
-//     impressions, clicks, ctr, cost, conversions, conversionsValue
-//   }>
-// ---------------------------------------------------------------------------
 
 export const MOCK_GOOGLE_ADS = {
   companyId:   'company-001',
@@ -135,8 +132,8 @@ export const MOCK_GOOGLE_ADS = {
   metrics: {
     impressions:      184_320,
     clicks:             6_814,
-    ctr:                  3.70,   // percent
-    cost:             8_943.27,   // USD
+    ctr:                  3.70,
+    cost:             8_943.27,
     conversions:        412.0,
     conversionsValue: 34_218.50,
     averageCpc:           1.31,
@@ -190,23 +187,6 @@ export const MOCK_GOOGLE_ADS = {
   ],
 };
 
-
-// ---------------------------------------------------------------------------
-// Metricool  (MetricoolMetrics.tsx)
-// ---------------------------------------------------------------------------
-// Shape: MetricoolData
-//   companyId, companyName, blogId
-//   dateRange: { startDate, endDate }
-//   profile: any   (not used directly in render but good to have)
-//   stats: {
-//     totalFollowers, totalPosts, engagementRate, totalReach
-//   }
-//   posts: Array<{
-//     text, network, date,
-//     likes (optional), comments (optional)
-//   }>
-// ---------------------------------------------------------------------------
-
 export const MOCK_METRICOOL = {
   companyId:   'company-001',
   companyName: 'Acme Digital Co.',
@@ -223,16 +203,13 @@ export const MOCK_METRICOOL = {
     avatar: null,
   },
 
-  // SocialCard values:  totalFollowers, totalPosts, engagementRate, totalReach
   stats: {
     totalFollowers:  24_810,
     totalPosts:         187,
-    engagementRate:    4.82,   // percent (displayed as "4.82%")
+    engagementRate:    4.82,
     totalReach:     312_540,
   },
 
-  // PostCard: text, network, date, likes, comments
-  // Networks tested: Instagram, LinkedIn, Facebook, Twitter + unknown (Radio icon fallback)
   posts: [
     {
       text:     '🚀 Just published our full breakdown of GA4 vs Universal Analytics — everything you need to know before the final cutoff. Link in bio! #Analytics #GA4 #DigitalMarketing',
