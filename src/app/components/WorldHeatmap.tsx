@@ -64,7 +64,6 @@ interface Props {
   onCountryChange?: (country: string | null) => void;
 }
 
-
 export const WorldHeatmap = forwardRef<{ getSelectedCountry: () => string | null }, Props>(
   function WorldHeatmap({ countries, regions = [], theme, initialCountry = null, onCountryChange }, ref) {
   const [ComposableMap, setComposableMap] = useState<any>(null);

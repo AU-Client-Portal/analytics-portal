@@ -454,6 +454,59 @@ function DateRangePicker({ startDate, endDate, compareMode, onApply, tw, raw, on
   );
 }
 
+function PageRow({ page, i, pct, sharePct, color, visible, raw }: {
+  page: { title: string; path: string; views: number };
+  i: number; pct: number; sharePct: number; color: string; visible: boolean;
+  raw: typeof THEME_RAW[Theme];
+}) {
+  const [hovered, setHovered] = useState(false);
+  return (
+    <div onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}
+      style={{
+        padding: '10px 24px',
+        background: hovered ? `${raw.ring1}06` : 'transparent',
+        transition: 'background 0.15s',
+        opacity: visible ? 1 : 0,
+        transform: visible ? 'translateX(0)' : 'translateX(-16px)',
+        transitionDelay: `${i * 60}ms`,
+      }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+        <div style={{
+          width: 28, height: 28, borderRadius: 8, flexShrink: 0,
+          background: `${color}18`, border: `1.5px solid ${color}30`,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          color, fontSize: 12, fontWeight: 800,
+          transform: hovered ? 'scale(1.1)' : 'scale(1)',
+          transition: 'transform 0.2s cubic-bezier(0.34,1.56,0.64,1)',
+        }}>
+          {i + 1}
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{ color: raw.text, fontSize: 13, fontWeight: 600, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {page.title}
+          </p>
+          <p style={{ color: raw.subtext, fontSize: 11, fontFamily: 'monospace', margin: '1px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {page.path}
+          </p>
+        </div>
+        <div style={{ textAlign: 'right', flexShrink: 0 }}>
+          <p style={{ color, fontSize: 13, fontWeight: 700, margin: 0 }}>{fmt(page.views)}</p>
+          <p style={{ color: raw.subtext, fontSize: 10, margin: '1px 0 0' }}>{sharePct}% share</p>
+        </div>
+      </div>
+      <div style={{ marginTop: 8, height: 3, background: raw.track, borderRadius: 2, overflow: 'hidden' }}>
+        <div style={{
+          height: '100%',
+          width: hovered ? `${pct}%` : `${pct * 0.85}%`,
+          background: `linear-gradient(90deg, ${color}, ${color}88)`,
+          borderRadius: 2,
+          transition: 'width 0.5s cubic-bezier(0.4,0,0.2,1)',
+        }} />
+      </div>
+    </div>
+  );
+}
+
 function TopPagesSection({ pages, tw, raw }: {
   pages: Array<{ title: string; path: string; views: number }>;
   tw: typeof THEME_TW[Theme]; raw: typeof THEME_RAW[Theme];
@@ -480,51 +533,8 @@ function TopPagesSection({ pages, tw, raw }: {
           const pct = (page.views / max) * 100;
           const sharePct = Math.round((page.views / total) * 100);
           const color = rankColors[Math.min(i, rankColors.length - 1)];
-          const [hovered, setHovered] = useState(false);
           return (
-            <div key={i} onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}
-              style={{
-                padding: '10px 24px',
-                background: hovered ? `${raw.ring1}06` : 'transparent',
-                transition: 'background 0.15s',
-                opacity: visible ? 1 : 0,
-                transform: visible ? 'translateX(0)' : 'translateX(-16px)',
-                transitionDelay: `${i * 60}ms`,
-              }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                <div style={{
-                  width: 28, height: 28, borderRadius: 8, flexShrink: 0,
-                  background: `${color}18`, border: `1.5px solid ${color}30`,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  color, fontSize: 12, fontWeight: 800,
-                  transform: hovered ? 'scale(1.1)' : 'scale(1)',
-                  transition: 'transform 0.2s cubic-bezier(0.34,1.56,0.64,1)',
-                }}>
-                  {i + 1}
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ color: raw.text, fontSize: 13, fontWeight: 600, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {page.title}
-                  </p>
-                  <p style={{ color: raw.subtext, fontSize: 11, fontFamily: 'monospace', margin: '1px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {page.path}
-                  </p>
-                </div>
-                <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                  <p style={{ color, fontSize: 13, fontWeight: 700, margin: 0 }}>{fmt(page.views)}</p>
-                  <p style={{ color: raw.subtext, fontSize: 10, margin: '1px 0 0' }}>{sharePct}% share</p>
-                </div>
-              </div>
-              <div style={{ marginTop: 8, height: 3, background: raw.track, borderRadius: 2, overflow: 'hidden' }}>
-                <div style={{
-                  height: '100%',
-                  width: hovered ? `${pct}%` : `${pct * 0.85}%`,
-                  background: `linear-gradient(90deg, ${color}, ${color}88)`,
-                  borderRadius: 2,
-                  transition: 'width 0.5s cubic-bezier(0.4,0,0.2,1)',
-                }} />
-              </div>
-            </div>
+            <PageRow key={i} page={page} i={i} pct={pct} sharePct={sharePct} color={color} visible={visible} raw={raw} />
           );
         })}
       </div>
