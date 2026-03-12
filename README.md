@@ -1,64 +1,142 @@
-# README for Custom App Base
+# Analytics Portal — Custom Assembly App
 
-This repository is a starting point for [Copilot Apps](https://www.copilot.app/apps). It is built using using [Next.js](https://nextjs.org/) and was bootstrapped with [create-next-app](https://nextjs.org/docs/pages/api-reference/create-next-app).
+## Environment Variables
 
-### Benefits
+Add all of these in **Vercel → Project → Settings → Environment Variables**, then redeploy.
 
-Copilot Apps can be embedded in your internal dashboard and client portal and they can use our REST API to fetch information and perform actions, extending the Copilot production with custom functionality to meet a variety of needs.
+| Variable | Description |
+|---|---|
+| `COPILOT_API_KEY` | Generated when you create the app in the Copilot dashboard. Must match the workspace where client portal lives. |
+| `GA4_CLIENT_EMAIL` | The `client_email` field from your Google service account JSON (e.g. `name@project.iam.gserviceaccount.com`) |
+| `GA4_PRIVATE_KEY` | The `private_key` field from your Google service account JSON. Paste as a single line with literal `\n` characters — do NOT use real line breaks. The code handles conversion automatically. |
+| `GOOGLE_ADS_CLIENT_ID` | OAuth2 client ID from Google Cloud Console |
+| `GOOGLE_ADS_CLIENT_SECRET` | OAuth2 client secret from Google Cloud Console |
+| `GOOGLE_ADS_DEVELOPER_TOKEN` | From Google Ads API Center |
+| `GOOGLE_ADS_REFRESH_TOKEN` | OAuth2 refresh token for Google Ads |
+| `GOOGLE_ADS_LOGIN_CUSTOMER_ID` | Your top-level Google Ads manager account ID (no dashes) |
+| `METRICOOL_USER_ID` | Your Metricool user ID |
+| `METRICOOL_API_TOKEN` | Your Metricool API token |
 
-### Prerequisites
+> **Note on GA4_PRIVATE_KEY format:** Open the downloaded `.json` file, copy only the value of `"private_key"` (the long string starting with `-----BEGIN RSA PRIVATE KEY-----`). It should be one continuous line. Do not wrap it in extra quotes.
 
-In order to build a Copilot custom app you’ll need a knowledge of modern web development. Here are some of the tools you’ll encounter in this repository:
+---
 
-- Node.JS
-- React
-- Next.JS
-- Yarn (NPM, PNPM, Bun or any other Node.JS package manager are also possible, but we use Yarn)
+## Onboarding a New Client
 
-Minimum required Node.js version: 22.x
+Each new client requires setup in **three places**: your CRM (Assemebly), their Google Analytics, and optionally Google Ads / Metricool.
 
-### Getting Started
+### Step 1 — Add Client in Assembly
 
-The easiest way to get started is to fork this repo. Once forked, you will need to deploy the app and add it to Copilot.
+1. Go to your [Assembly Dashboard](https://dashboard.copilot.app)
+2. Navigate to **Clients** → **Add Client**
+3. Fill in their details and send portal invite
 
-**Deploying and Configuring App**
+### Step 2 — Configure Client in the CRM Company Record
 
-The easiest way to deploy this custom app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme).
+In the client's company record, add the following fields depending on which integrations they use:
 
-- Create a new project in your Vercel account. Note: create an account if you don't have one using github to automatically import repos.
-- Select the forked repo in Import Git Repository
-- In environment variables add COPILOT_API_KEY. Your API key will be generated after you [add your app in the Copilot dashboard](https://dashboard.copilot.app/app-setup/setup?moduleType=extension&moduleId=new&preset=custom&appId=). You can submit 3 different URLs for your app: an internal URL for [internal users](https://docs.copilot.app/reference/internal-users), a client URL for [clients](https://docs.copilot.app/reference/clients), and a webhook URL that allows your app to subscribe to various [webhook events](https://docs.copilot.app/reference/webhooks-events). These values can all be edited after you create your app, so you can start with a simple config and add to it later.
+| Field | Description |
+|---|---|
+| `ga4PropertyId` | Their GA4 Property ID (numbers only, e.g. `123456789`) |
+| `adsCustomerId` | Their Google Ads customer ID (no dashes) |
+| `metricoolBlogId` | Their Metricool Blog/Profile ID |
 
-### **Developing App**
+> These IDs tell the app which accounts to pull data from for each specific client.
 
-All you need to do to get started developing is clone your forked app locally and run a few commands.
+### Step 3 — Grant Service Account Access to Client's GA4
 
-**Install dependencies**
+This step is **required for GA4 to work** — the client must grant your service account access to their own Google Analytics property.
 
-```tsx
+**Send the client these instructions:**
+
+1. Go to [analytics.google.com](https://analytics.google.com)
+2. Click **Admin** (gear icon, bottom left)
+3. Make sure the correct **Account and Property** are selected
+4. Under the **Property** column → click **Property Access Management**
+5. Click the blue **+** button → **Add users**
+6. Enter the service account email:
+   ```
+   wordpress-portal-v2@client-portal-au-site.iam.gserviceaccount.com
+   ```
+7. Set role to **Viewer** → click **Add**
+
+> ⚠️ The service account must be added at the **Property** level, not just the Account level.
+
+### Step 4 — Verify the GA4 Property ID
+
+1. In GA4 Admin → **Property Settings** → copy the **Property ID** (a plain number)
+2. Make sure this matches exactly what you entered in the CRM company record (`ga4PropertyId`)
+
+### Step 5 — (Optional) Google Ads Setup
+
+If the client wants Google Ads data:
+
+1. Make sure their `adsCustomerId` is set in the CRM
+2. The `GOOGLE_ADS_REFRESH_TOKEN` and related env vars must be authorized to access their customer account
+3. If using a manager (MCC) account, set `GOOGLE_ADS_LOGIN_CUSTOMER_ID` to the manager account ID
+
+### Step 6 — (Optional) Metricool Setup
+
+If the client wants Metricool data:
+
+1. Set `metricoolBlogId` in their CRM company record
+2. Ensure `METRICOOL_USER_ID` and `METRICOOL_API_TOKEN` env vars are set in Vercel
+
+---
+
+## Local Development
+
+### Install dependencies
+
+```bash
 yarn install
 ```
 
-**Run the app locally**
+### Set up local environment
 
-In order to have the most complete experience when developing locally and seeing your changes reflected in the Copilot platform, you can use [ngrok](https://ngrok.com/) to create a secure tunnel to your local development environment.
-
-1. Create an ngrok account (free): https://dashboard.ngrok.com/signup
-2. After creating an account you will get an auth token which you can find in the [ngrok dashboard](https://dashboard.ngrok.com/get-started/your-authtoken)
-3. Create a `.env.personal` file in the root of the project and add your auth token to it: `NGROK_AUTH_TOKEN="<token copied from ngrok dashboard>"`
-
-Create an app in the Copilot dashboard: https://dashboard.copilot.app/app-setup/new and select a Custom App. For now you can leave the URLs blank since you have not deployed your app yet. This will generate an API key for your app. Add this API key to the `.env.local` file as `COPILOT_API_KEY="<api key copied from Copilot dashboard>"`
-
-Now you can run the app locally
+Create a `.env.local` file:
 
 ```
+COPILOT_API_KEY="your_api_key"
+```
+
+Create a `.env.personal` file for ngrok tunneling:
+
+```
+NGROK_AUTH_TOKEN="your_ngrok_token"
+```
+
+Get a free ngrok token at [dashboard.ngrok.com](https://dashboard.ngrok.com/get-started/your-authtoken).
+
+### Run locally with Copilot embedded
+
+```bash
 yarn dev:embedded
 ```
 
-This will open the Copilot dashboard with your app embedded. You can select the app you setup in the Copilot dashboard. The first time you open the app you will be prompted with a message telling you are about to visit your app through ngrok. Click on "Visit Site" to open see your app in the dashboard.
+This opens the Copilot dashboard with your app embedded via ngrok. The first time, click **"Visit Site"** when prompted by ngrok.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-### Content Security Policy
+## Content Security Policy
 
-The Content Security Policy in the custom app base should be configured in `src/middleware.ts`. In the `cspHeader` variable under `frame-ancestors`, `https://dashboard.copilot.app` and `https://*.copilot.app` are pre-configured. If you have a custom domain, you'll also want to add your custom domain here. For example, `https://portal.mycompany.com`.
+The CSP is configured in `src/middleware.ts`. The `frame-ancestors` directive includes `https://dashboard.copilot.app` and `https://*.copilot.app` by default.
+
+If you use a custom domain for your portal, add it:
+
+```
+frame-ancestors https://dashboard.copilot.app https://*.copilot.app https://portal.yourcompany.com;
+```
+
+---
+
+## Troubleshooting
+
+| Error | Cause | Fix |
+|---|---|---|
+| GA4 `UNAUTHENTICATED` | Private key is malformed in Vercel | Re-paste `GA4_PRIVATE_KEY` as a single line with literal `\n` — no surrounding quotes, no real line breaks |
+| GA4 `PERMISSION_DENIED` | Service account not added to client's GA4 property | Client must add the service account email as Viewer in their GA4 Property Access Management |
+| GA4 `PERMISSION_DENIED` | Wrong Property ID in CRM | Double-check `ga4PropertyId` in the company record matches the GA4 Property ID exactly |
+| Copilot `401 Unauthorized` | API key belongs to wrong workspace | Regenerate `COPILOT_API_KEY` from the correct Copilot workspace |
+| `Session Token is required` | App accessed via raw Vercel URL | Normal — app must be accessed through `*.copilot.app`, not directly |
+| Google Ads `500` | Missing env vars | Check all `GOOGLE_ADS_*` variables are set in Vercel and redeploy |
