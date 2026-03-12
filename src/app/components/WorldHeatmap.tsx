@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
+import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import { ChevronLeft, Globe, MapPin } from 'lucide-react';
 
 const WORLD_GEO_URL = 'https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json';
@@ -96,12 +96,14 @@ export const WorldHeatmap = forwardRef<{ getSelectedCountry: () => string | null
     return () => window.removeEventListener('resize', check);
   }, []);
 
+  const initialCountryRef = useRef(initialCountry);
   useEffect(() => {
-    if (initialCountry) {
-      const center = COUNTRY_CENTROIDS[COUNTRY_NAME_MAP[initialCountry] || initialCountry];
+    const country = initialCountryRef.current;
+    if (country) {
+      const center = COUNTRY_CENTROIDS[COUNTRY_NAME_MAP[country] || country];
       if (center) {
         setMapCenter(center);
-        setMapZoom(COUNTRY_ZOOM[COUNTRY_NAME_MAP[initialCountry] || initialCountry] || 3);
+        setMapZoom(COUNTRY_ZOOM[COUNTRY_NAME_MAP[country] || country] || 3);
       }
     }
   }, []);

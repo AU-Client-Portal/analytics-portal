@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
   try {
     const session = await getSessionFromRoute(request.nextUrl.searchParams);
 
-    if (!session.internalUser) {
+    if (!session.workspace) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
