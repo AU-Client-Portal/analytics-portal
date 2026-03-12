@@ -3,8 +3,8 @@
 import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import { ChevronLeft, Globe, MapPin } from 'lucide-react';
 
-const WORLD_GEO_URL = 'https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json';
-const US_GEO_URL = 'https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json';
+const WORLD_GEO_URL = 'https://unpkg.com/world-atlas@2/countries-110m.json';
+const US_GEO_URL = 'https://unpkg.com/us-atlas@3/states-10m.json';
 
 const COUNTRY_NAME_MAP: Record<string, string> = {
   'United States': 'United States of America',
@@ -76,7 +76,6 @@ export const WorldHeatmap = forwardRef<{ getSelectedCountry: () => string | null
   const [selectedCountry, setSelectedCountry] = useState<string | null>(initialCountry);
   const [mapZoom, setMapZoom] = useState(1);
   const [mapCenter, setMapCenter] = useState<[number, number]>([0, 10]);
-
   const [isMobile, setIsMobile] = useState(false);
 
   useImperativeHandle(ref, () => ({
@@ -111,12 +110,14 @@ export const WorldHeatmap = forwardRef<{ getSelectedCountry: () => string | null
   }, []);
 
   useEffect(() => {
-    import('react-simple-maps').then(mod => {
-      setComposableMap(() => mod.ComposableMap);
-      setGeographies(() => mod.Geographies);
-      setGeography(() => mod.Geography);
-      setZoomableGroup(() => mod.ZoomableGroup);
-    }).catch(() => setMapLoadError(true));
+    import('react-simple-maps')
+      .then(mod => {
+        setComposableMap(() => mod.ComposableMap);
+        setGeographies(() => mod.Geographies);
+        setGeography(() => mod.Geography);
+        setZoomableGroup(() => mod.ZoomableGroup);
+      })
+      .catch(() => setMapLoadError(true));
   }, []);
 
   function getFillWorld(geoName: string): { data: CountryData | null; color: string; isFlagged: boolean } {
@@ -228,7 +229,6 @@ export const WorldHeatmap = forwardRef<{ getSelectedCountry: () => string | null
             </div>
           )}
         </div>
-
       </div>
 
       <div style={layoutStyle}>
@@ -281,7 +281,7 @@ export const WorldHeatmap = forwardRef<{ getSelectedCountry: () => string | null
                   {({ geographies }: { geographies: any[] }) =>
                     geographies.map((geo: any) => {
                       const name = geo.properties?.name as string;
-                      const { data, color, isFlagged } = getFillWorld(name);
+                      const { data, color } = getFillWorld(name);
                       const isHov = hovered?.name === name;
                       const isSel = selectedCountry && data?.country === selectedCountry;
                       return (
@@ -332,7 +332,6 @@ export const WorldHeatmap = forwardRef<{ getSelectedCountry: () => string | null
             <div style={{
               background: C.panel.bg, border: `1px solid ${C.panel.border}`,
               borderRadius: 12, padding: '14px 16px',
-
               maxHeight: isMobile ? 'none' : 400,
               overflowY: isMobile ? 'visible' : 'auto',
             }}>

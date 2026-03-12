@@ -18,7 +18,11 @@ import dynamic from 'next/dynamic';
 import { MOCK_GA4 } from './mockData';
 
 const WorldHeatmap = dynamic(
-  () => import('./WorldHeatmap').then(m => m.WorldHeatmap),
+  () => import('./WorldHeatmap').then(m => m.WorldHeatmap).catch(() => {
+    return ({ }: any) => (
+      <p style={{ fontSize: 13, padding: 20, textAlign: 'center', opacity: 0.5 }}>Map unavailable</p>
+    );
+  }),
   { ssr: false, loading: () => <p style={{ fontSize: 13, padding: 20, textAlign: 'center', opacity: 0.5 }}>Loading map…</p> }
 );
 
@@ -388,7 +392,6 @@ function DateRangePicker({ startDate, endDate, compareMode, onApply, tw, raw, on
     WebkitAppearance: 'none' as const,
   };
   return (
-
     <div className={`${tw.card} border ${tw.border}`} style={{
       position: 'fixed',
       bottom: 'auto',
@@ -400,7 +403,6 @@ function DateRangePicker({ startDate, endDate, compareMode, onApply, tw, raw, on
       boxShadow: '0 16px 48px rgba(0,0,0,0.28)',
       zIndex: 300,
       width: 'min(320px, calc(100vw - 32px))',
-
       left: 'auto',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
@@ -428,7 +430,6 @@ function DateRangePicker({ startDate, endDate, compareMode, onApply, tw, raw, on
           <input type="date" value={e} min={s} max={today} onChange={ev => setE(ev.target.value)} style={inputStyle} />
         </div>
         <div style={{ height: 1, background: raw.border, margin: '2px 0' }} />
-
         <div>
           <label style={{ color: raw.subtext, fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Compare to</label>
           <div style={{ position: 'relative' }}>
@@ -604,10 +605,15 @@ export function GA4Dashboard() {
   }, [token]);
 
   useEffect(() => {
-    if (USE_MOCK) return;
+    if (USE_MOCK || !token) return;
     fetch(`/api/companies?token=${token}`)
       .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d?.companies) { setIsAdmin(true); setCompanies(d.companies); } })
+      .then(d => {
+        if (d?.isAdmin === true && d?.companies) {
+          setIsAdmin(true);
+          setCompanies(d.companies);
+        }
+      })
       .catch(() => {});
   }, [token]);
 
@@ -641,6 +647,13 @@ export function GA4Dashboard() {
   useEffect(() => {
     async function fetchMetrics() {
       if (!activeStart || !activeEnd) return;
+
+      if (!token && !USE_MOCK) {
+        setError('NO_TOKEN');
+        setLoading(false);
+        return;
+      }
+
       setLoading(true); setError(null);
       try {
         if (USE_MOCK) { await new Promise(r => setTimeout(r, 600)); setData(MOCK_GA4 as any); return; }
@@ -668,10 +681,28 @@ export function GA4Dashboard() {
 
   if (error) return (
     <div className={`min-h-screen ${tw.bg} flex items-center justify-center p-6`}>
-      <div className={`${tw.card} border ${tw.border} rounded-2xl p-8 max-w-md w-full text-center`}>
-        <div className="text-red-400 text-4xl mb-3">⚠</div>
-        <p className={`${tw.text} font-semibold mb-1`}>Failed to load analytics</p>
-        <p className={`${tw.subtext} text-sm`}>{error}</p>
+      <div className={`${tw.card} border ${tw.border} rounded-2xl p-10 max-w-md w-full text-center shadow-lg`}>
+        {error === 'NO_TOKEN' ? (
+          <>
+            <div style={{ fontSize: 40, marginBottom: 12 }}>🔒</div>
+            <p className={`${tw.text} font-bold text-lg mb-2`}>Access token required</p>
+            <p className={`${tw.subtext} text-sm leading-relaxed mb-4`}>
+              This dashboard requires a valid access token. Please use the personalised link that was provided to you — it should look like:
+            </p>
+            <code className={`block text-xs ${tw.trackBg} ${tw.text} rounded-lg px-4 py-3 break-all mb-4 text-left`}>
+              yourdomain.com/dashboard?token=YOUR_TOKEN
+            </code>
+            <p className={`${tw.subtext} text-xs`}>
+              If you believe this is a mistake, please contact your account manager.
+            </p>
+          </>
+        ) : (
+          <>
+            <div className="text-red-400 text-4xl mb-3">⚠</div>
+            <p className={`${tw.text} font-semibold mb-1`}>Failed to load analytics</p>
+            <p className={`${tw.subtext} text-sm`}>{error}</p>
+          </>
+        )}
       </div>
     </div>
   );
