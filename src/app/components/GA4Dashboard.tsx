@@ -17,12 +17,12 @@ import { MetricoolMetrics } from './MetricoolMetrics';
 import dynamic from 'next/dynamic';
 import { MOCK_GA4 } from './mockData';
 
+function MapFallback() {
+  return <p style={{ fontSize: 13, padding: 20, textAlign: 'center', opacity: 0.5 }}>Map unavailable</p>;
+}
+
 const WorldHeatmap = dynamic(
-  () => import('./WorldHeatmap').then(m => m.WorldHeatmap).catch(() => {
-    return ({ }: any) => (
-      <p style={{ fontSize: 13, padding: 20, textAlign: 'center', opacity: 0.5 }}>Map unavailable</p>
-    );
-  }),
+  () => import('./WorldHeatmap').then(m => m.WorldHeatmap).catch(() => MapFallback),
   { ssr: false, loading: () => <p style={{ fontSize: 13, padding: 20, textAlign: 'center', opacity: 0.5 }}>Loading map…</p> }
 );
 
