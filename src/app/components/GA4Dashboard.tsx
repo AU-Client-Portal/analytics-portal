@@ -10,7 +10,7 @@ import {
   Users, Activity, Eye, UserPlus, Clock, TrendingDown,
   Zap, Sun, Moon, Leaf, BarChart2, Settings, X, Check,
   TrendingUp, Phone, ArrowUpRight, ArrowDownRight, Calendar,
-  Building2, ChevronDown, FileText,
+  ChevronDown, FileText,
 } from 'lucide-react';
 import { GoogleAdsMetrics } from './GoogleAdsMetrics';
 import { MetricoolMetrics } from './MetricoolMetrics';
@@ -196,7 +196,6 @@ interface GA4Data {
   regions?: Array<{ country: string; region: string; users: number }>;
   callEvents?: Array<{ event: string; count: number }>;
 }
-interface Company { id: string; name: string; iconColor?: string | null; ga4PropertyId?: string | null; }
 
 function ShineCard({ children, className = '', style, shineColor, onClick }: {
   children: React.ReactNode; className?: string; style?: React.CSSProperties;
@@ -321,55 +320,6 @@ const CustomTooltip = ({ active, payload, label, raw }: any) => {
   );
 };
 
-function CompanySelector({ companies, selectedId, onSelect, tw, raw }: {
-  companies: Company[]; selectedId: string | null;
-  onSelect: (id: string) => void;
-  tw: typeof THEME_TW[Theme]; raw: typeof THEME_RAW[Theme];
-}) {
-  const [open, setOpen] = useState(false);
-  const selected = companies.find(c => c.id === selectedId);
-  return (
-    <div style={{ position: 'relative' }}>
-      <button onClick={() => setOpen(!open)} className={`${tw.card} border ${tw.border}`}
-        style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', borderRadius: 12, cursor: 'pointer', minWidth: 200 }}>
-        <Building2 size={14} style={{ color: raw.ring1, flexShrink: 0 }} />
-        <span style={{ color: raw.text, fontSize: 13, fontWeight: 600, flex: 1, textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {selected?.name ?? 'Select a company…'}
-        </span>
-        <ChevronDown size={13} style={{ color: raw.subtext, flexShrink: 0 }} />
-      </button>
-      {open && (
-        <div className={`${tw.card} border ${tw.border}`} style={{
-          position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 6,
-          borderRadius: 12, boxShadow: '0 8px 32px rgba(0,0,0,0.18)', zIndex: 200,
-          maxHeight: 320, overflowY: 'auto',
-        }}>
-          {companies.map(c => (
-            <button key={c.id} onClick={() => { onSelect(c.id); setOpen(false); }}
-              style={{
-                width: '100%', display: 'flex', alignItems: 'center', gap: 10,
-                padding: '10px 14px', textAlign: 'left', cursor: 'pointer',
-                background: c.id === selectedId ? `${raw.ring1}12` : 'transparent',
-                border: 'none', outline: 'none', borderBottom: `1px solid ${raw.border}`,
-              }}
-              onMouseEnter={e => { if (c.id !== selectedId) (e.currentTarget as HTMLButtonElement).style.background = `${raw.ring1}08`; }}
-              onMouseLeave={e => { if (c.id !== selectedId) (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; }}>
-              <div style={{ width: 28, height: 28, borderRadius: 8, background: c.iconColor ?? raw.ring1, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <span style={{ color: 'white', fontSize: 11, fontWeight: 700 }}>{c.name[0].toUpperCase()}</span>
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ color: raw.text, fontSize: 13, fontWeight: 600, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</p>
-                {!c.ga4PropertyId && <p style={{ color: raw.subtext, fontSize: 10, margin: 0 }}>No GA4 configured</p>}
-              </div>
-              {c.id === selectedId && <Check size={13} style={{ color: raw.ring1, flexShrink: 0 }} />}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
 function DateRangePicker({ startDate, endDate, compareMode, onApply, tw, raw, onClose }: {
   startDate: string; endDate: string; compareMode: string;
   onApply: (start: string, end: string, compare: string) => void;
@@ -386,24 +336,14 @@ function DateRangePicker({ startDate, endDate, compareMode, onApply, tw, raw, on
     colorScheme: 'inherit',
   } as React.CSSProperties;
   const selectStyle = {
-    ...inputStyle,
-    cursor: 'pointer',
-    appearance: 'none' as const,
-    WebkitAppearance: 'none' as const,
+    ...inputStyle, cursor: 'pointer',
+    appearance: 'none' as const, WebkitAppearance: 'none' as const,
   };
   return (
     <div className={`${tw.card} border ${tw.border}`} style={{
-      position: 'fixed',
-      bottom: 'auto',
-      right: 16,
-      top: 'auto',
-      marginTop: 0,
-      borderRadius: 16,
-      padding: 20,
-      boxShadow: '0 16px 48px rgba(0,0,0,0.28)',
-      zIndex: 300,
-      width: 'min(320px, calc(100vw - 32px))',
-      left: 'auto',
+      position: 'fixed', bottom: 'auto', right: 16, top: 'auto', marginTop: 0,
+      borderRadius: 16, padding: 20, boxShadow: '0 16px 48px rgba(0,0,0,0.28)',
+      zIndex: 300, width: 'min(320px, calc(100vw - 32px))', left: 'auto',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -419,7 +359,6 @@ function DateRangePicker({ startDate, endDate, compareMode, onApply, tw, raw, on
           <X size={16} />
         </button>
       </div>
-
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <div>
           <label style={{ color: raw.subtext, fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Start date</label>
@@ -440,7 +379,6 @@ function DateRangePicker({ startDate, endDate, compareMode, onApply, tw, raw, on
           </div>
         </div>
       </div>
-
       <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
         <button onClick={onClose} style={{ flex: 1, padding: '8px', borderRadius: 10, border: `1px solid ${raw.border}`, background: 'transparent', color: raw.subtext, fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>
           Cancel
@@ -465,12 +403,9 @@ function PageRow({ page, i, pct, sharePct, color, visible, raw }: {
   return (
     <div onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}
       style={{
-        padding: '10px 24px',
-        background: hovered ? `${raw.ring1}06` : 'transparent',
-        transition: 'background 0.15s',
-        opacity: visible ? 1 : 0,
-        transform: visible ? 'translateX(0)' : 'translateX(-16px)',
-        transitionDelay: `${i * 60}ms`,
+        padding: '10px 24px', background: hovered ? `${raw.ring1}06` : 'transparent',
+        transition: 'background 0.15s', opacity: visible ? 1 : 0,
+        transform: visible ? 'translateX(0)' : 'translateX(-16px)', transitionDelay: `${i * 60}ms`,
       }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
         <div style={{
@@ -484,12 +419,8 @@ function PageRow({ page, i, pct, sharePct, color, visible, raw }: {
           {i + 1}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ color: raw.text, fontSize: 13, fontWeight: 600, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {page.title}
-          </p>
-          <p style={{ color: raw.subtext, fontSize: 11, fontFamily: 'monospace', margin: '1px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {page.path}
-          </p>
+          <p style={{ color: raw.text, fontSize: 13, fontWeight: 600, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{page.title}</p>
+          <p style={{ color: raw.subtext, fontSize: 11, fontFamily: 'monospace', margin: '1px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{page.path}</p>
         </div>
         <div style={{ textAlign: 'right', flexShrink: 0 }}>
           <p style={{ color, fontSize: 13, fontWeight: 700, margin: 0 }}>{fmt(page.views)}</p>
@@ -498,11 +429,9 @@ function PageRow({ page, i, pct, sharePct, color, visible, raw }: {
       </div>
       <div style={{ marginTop: 8, height: 3, background: raw.track, borderRadius: 2, overflow: 'hidden' }}>
         <div style={{
-          height: '100%',
-          width: hovered ? `${pct}%` : `${pct * 0.85}%`,
+          height: '100%', width: hovered ? `${pct}%` : `${pct * 0.85}%`,
           background: `linear-gradient(90deg, ${color}, ${color}88)`,
-          borderRadius: 2,
-          transition: 'width 0.5s cubic-bezier(0.4,0,0.2,1)',
+          borderRadius: 2, transition: 'width 0.5s cubic-bezier(0.4,0,0.2,1)',
         }} />
       </div>
     </div>
@@ -518,7 +447,6 @@ function TopPagesSection({ pages, tw, raw }: {
   const max = Math.max(...pages.map(p => p.views), 1);
   const total = pages.reduce((s, p) => s + p.views, 0);
   const rankColors = [raw.ring1, raw.ring2, raw.ring3, raw.subtext, raw.subtext];
-
   return (
     <div className={`${tw.card} border ${tw.border} rounded-2xl overflow-hidden`}>
       <div style={{ padding: '20px 24px 0' }}>
@@ -535,9 +463,7 @@ function TopPagesSection({ pages, tw, raw }: {
           const pct = (page.views / max) * 100;
           const sharePct = Math.round((page.views / total) * 100);
           const color = rankColors[Math.min(i, rankColors.length - 1)];
-          return (
-            <PageRow key={i} page={page} i={i} pct={pct} sharePct={sharePct} color={color} visible={visible} raw={raw} />
-          );
+          return <PageRow key={i} page={page} i={i} pct={pct} sharePct={sharePct} color={color} visible={visible} raw={raw} />;
         })}
       </div>
     </div>
@@ -555,16 +481,12 @@ export function GA4Dashboard() {
   const [compareMode, setCompareMode] = useState('previous');
   const [showDatePicker, setShowDatePicker] = useState(false);
 
-  const [theme, setTheme] = useState<Theme>('forest');
+  const [theme, setTheme] = useState<Theme>('light');
   const [heroMetrics, setHeroMetrics] = useState<[HeroMetricId, HeroMetricId, HeroMetricId]>(DEFAULT_HERO);
   const [showPicker, setShowPicker] = useState(false);
   const [mapCountry, setMapCountry] = useState<string | null>(null);
   const [savingPrefs, setSavingPrefs] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'error'>('idle');
-
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [companies, setCompanies] = useState<Company[]>([]);
-  const [selectedCompanyToken, setSelectedCompanyToken] = useState<string | null>(null);
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchParams = useSearchParams();
@@ -604,21 +526,9 @@ export function GA4Dashboard() {
     }
   }, [token]);
 
-  useEffect(() => {
-    if (USE_MOCK || !token) return;
-    fetch(`/api/companies?token=${token}`)
-      .then(r => r.ok ? r.json() : null)
-      .then(d => {
-        if (d?.isAdmin === true && d?.companies) {
-          setIsAdmin(true);
-          setCompanies(d.companies);
-        }
-      })
-      .catch(() => {});
-  }, [token]);
-
   const savePreferences = useCallback((prefs: DashboardPreferences) => {
     localStorage.setItem('dashboard-prefs', JSON.stringify(prefs));
+    console.log('savePreferences called, token:', token ? 'present' : 'missing');
     if (USE_MOCK || !token) return;
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(async () => {
@@ -632,6 +542,7 @@ export function GA4Dashboard() {
         if (!res.ok) throw new Error(body.error || 'Save failed');
         setSaveStatus('saved');
       } catch (e: any) {
+        console.error('Preferences save error:', e.message);
         setSaveStatus('error');
       } finally {
         setSavingPrefs(false);
@@ -647,25 +558,18 @@ export function GA4Dashboard() {
   useEffect(() => {
     async function fetchMetrics() {
       if (!activeStart || !activeEnd) return;
-
-      if (!token && !USE_MOCK) {
-        setError('NO_TOKEN');
-        setLoading(false);
-        return;
-      }
-
+      if (!token && !USE_MOCK) { setError('NO_TOKEN'); setLoading(false); return; }
       setLoading(true); setError(null);
       try {
         if (USE_MOCK) { await new Promise(r => setTimeout(r, 600)); setData(MOCK_GA4 as any); return; }
-        const effectiveToken = selectedCompanyToken || token;
-        const res = await fetch(`/api/ga4/metrics?token=${effectiveToken}&startDate=${activeStart}&endDate=${activeEnd}&compareMode=${compareMode}`);
+        const res = await fetch(`/api/ga4/metrics?token=${token}&startDate=${activeStart}&endDate=${activeEnd}&compareMode=${compareMode}`);
         if (!res.ok) { const e = await res.json(); throw new Error(e.error || 'Failed'); }
         setData(await res.json());
       } catch (err: any) { setError(err.message); }
       finally { setLoading(false); }
     }
     fetchMetrics();
-  }, [token, selectedCompanyToken, activeStart, activeEnd, compareMode]);
+  }, [token, activeStart, activeEnd, compareMode]);
 
   if (loading) return (
     <div className={`min-h-screen ${tw.bg} flex items-center justify-center`}>
@@ -684,16 +588,15 @@ export function GA4Dashboard() {
       <div className={`${tw.card} border ${tw.border} rounded-2xl p-10 max-w-md w-full text-center shadow-lg`}>
         {error === 'NO_TOKEN' ? (
           <>
-            <div style={{ fontSize: 40, marginBottom: 12 }}>🔒</div>
-            <p className={`${tw.text} font-bold text-lg mb-2`}>Access token required</p>
-            <p className={`${tw.subtext} text-sm leading-relaxed mb-4`}>
-              This dashboard requires a valid access token. Please use the personalised link that was provided to you — it should look like:
-            </p>
-            <code className={`block text-xs ${tw.trackBg} ${tw.text} rounded-lg px-4 py-3 break-all mb-4 text-left`}>
-              yourdomain.com/dashboard?token=YOUR_TOKEN
-            </code>
-            <p className={`${tw.subtext} text-xs`}>
-              If you believe this is a mistake, please contact your account manager.
+            <div style={{ marginBottom: 12 }}>
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke={raw.ring1} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ margin: '0 auto' }}>
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              </svg>
+            </div>
+            <p className={`${tw.text} font-bold text-lg mb-2`}>Access required</p>
+            <p className={`${tw.subtext} text-sm leading-relaxed`}>
+              This dashboard can only be accessed through your personalised portal link. Please contact your account manager if you need help getting in.
             </p>
           </>
         ) : (
@@ -709,9 +612,7 @@ export function GA4Dashboard() {
 
   if (!data?.metrics) return (
     <div className={`min-h-screen ${tw.bg} flex items-center justify-center`}>
-      {isAdmin && companies.length > 0
-        ? <p className={tw.subtext}>Select a company above to view their dashboard</p>
-        : <p className={tw.subtext}>No data available</p>}
+      <p className={tw.subtext}>No data available</p>
     </div>
   );
 
@@ -735,13 +636,13 @@ export function GA4Dashboard() {
   };
 
   const CARD_METRICS = [
-    { id: 'activeUsers',    title: 'Active Users',    value: m.activeUsers,                        icon: <Users size={16}/>,        prevValue: prev?.activeUsers },
-    { id: 'sessions',       title: 'Sessions',        value: m.sessions,                           icon: <Activity size={16}/>,     prevValue: prev?.sessions },
-    { id: 'pageViews',      title: 'Page Views',      value: m.pageViews,                          icon: <Eye size={16}/>,          prevValue: prev?.pageViews },
-    { id: 'newUsers',       title: 'New Users',       value: m.newUsers,                           icon: <UserPlus size={16}/>,     prevValue: prev?.newUsers },
-    { id: 'avgSession',     title: 'Avg Session',     value: Math.round(m.avgSessionDuration),     icon: <Clock size={16}/>,        prevValue: prev ? Math.round(prev.avgSessionDuration) : undefined },
-    { id: 'bounceRate',     title: 'Bounce Rate',     value: parseFloat(m.bounceRate), suffix: '%', icon: <TrendingDown size={16}/>, prevValue: prev ? parseFloat(prev.bounceRate) : undefined, inverse: true },
-    { id: 'engagementRate', title: 'Engagement',      value: parseFloat(m.engagementRate), suffix: '%', icon: <Zap size={16}/>,    prevValue: prev ? parseFloat(prev.engagementRate) : undefined },
+    { id: 'activeUsers',    title: 'Active Users',    value: m.activeUsers,                            icon: <Users size={16}/>,        prevValue: prev?.activeUsers },
+    { id: 'sessions',       title: 'Sessions',        value: m.sessions,                               icon: <Activity size={16}/>,     prevValue: prev?.sessions },
+    { id: 'pageViews',      title: 'Page Views',      value: m.pageViews,                              icon: <Eye size={16}/>,          prevValue: prev?.pageViews },
+    { id: 'newUsers',       title: 'New Users',       value: m.newUsers,                               icon: <UserPlus size={16}/>,     prevValue: prev?.newUsers },
+    { id: 'avgSession',     title: 'Avg Session',     value: Math.round(m.avgSessionDuration),         icon: <Clock size={16}/>,        prevValue: prev ? Math.round(prev.avgSessionDuration) : undefined },
+    { id: 'bounceRate',     title: 'Bounce Rate',     value: parseFloat(m.bounceRate),   suffix: '%',  icon: <TrendingDown size={16}/>, prevValue: prev ? parseFloat(prev.bounceRate) : undefined, inverse: true },
+    { id: 'engagementRate', title: 'Engagement',      value: parseFloat(m.engagementRate), suffix: '%', icon: <Zap size={16}/>,         prevValue: prev ? parseFloat(prev.engagementRate) : undefined },
   ].filter(c => !heroSet.has(c.id as HeroMetricId)) as any[];
 
   const compareModeLabel = COMPARE_OPTIONS.find(o => o.value === compareMode)?.label ?? '';
@@ -799,9 +700,10 @@ export function GA4Dashboard() {
           </div>
         </div>
       )}
+
       <header className={`sticky top-0 z-50 ${tw.headerBg} px-3 md:px-8 py-3`}>
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-2 flex-wrap">
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-[#003F27] flex items-center justify-center shrink-0">
               <BarChart2 size={16} className="text-white" />
             </div>
@@ -809,9 +711,6 @@ export function GA4Dashboard() {
               <p className={`${tw.text} font-bold text-sm leading-tight`}>{data.companyName}</p>
               <p className={`${tw.subtext} text-xs`}>Analytics Dashboard</p>
             </div>
-            {isAdmin && companies.length > 0 && (
-              <CompanySelector companies={companies} selectedId={selectedCompanyToken} onSelect={setSelectedCompanyToken} tw={tw} raw={raw} />
-            )}
           </div>
 
           <div className="flex items-center gap-1.5 flex-wrap">
@@ -832,11 +731,7 @@ export function GA4Dashboard() {
               <button
                 onClick={() => setShowDatePicker(!showDatePicker)}
                 className={`flex items-center gap-1.5 rounded-lg text-xs font-semibold transition-all ${selectedPreset === null ? tw.pillActive : tw.pillInactive}`}
-                style={{
-                  padding: '6px 10px',
-                  border: showDatePicker ? `2px solid ${raw.ring1}` : selectedPreset === null ? 'none' : `1.5px solid ${raw.border}`,
-                  position: 'relative',
-                }}
+                style={{ padding: '6px 10px', border: showDatePicker ? `2px solid ${raw.ring1}` : selectedPreset === null ? 'none' : `1.5px solid ${raw.border}`, position: 'relative' }}
               >
                 <Calendar size={13} />
                 <span>{selectedPreset === null ? activeLabel : 'Custom'}</span>
@@ -844,7 +739,6 @@ export function GA4Dashboard() {
                   <span style={{ width: 5, height: 5, borderRadius: '50%', background: raw.ring2, display: 'inline-block', marginLeft: 2 }} />
                 )}
               </button>
-
               {showDatePicker && (
                 <>
                   <div style={{ position: 'fixed', inset: 0, zIndex: 290 }} onClick={() => setShowDatePicker(false)} />
@@ -870,6 +764,7 @@ export function GA4Dashboard() {
           </div>
         </div>
       </header>
+
       <main className="max-w-7xl mx-auto px-3 md:px-8 py-8 space-y-6">
         {prev && (
           <div className={`${tw.card} border ${tw.border} rounded-xl px-4 py-2.5 flex items-center gap-2 text-xs flex-wrap`}
@@ -881,6 +776,7 @@ export function GA4Dashboard() {
             <span className={tw.subtext}>Deltas reflect change vs. comparison period</span>
           </div>
         )}
+
         <ShineCard shineColor={raw.shineColor} className={`${tw.card} border ${tw.border} rounded-2xl p-6 md:p-8`}>
           <div className="flex items-center justify-between mb-6 md:mb-8">
             <p className={`${tw.subtext} text-xs font-bold uppercase tracking-widest`}>Key Highlights · {activeLabel}</p>
@@ -901,6 +797,7 @@ export function GA4Dashboard() {
             })}
           </div>
         </ShineCard>
+
         {CARD_METRICS.length > 0 && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
             {CARD_METRICS.map((c: any, i: number) => (
@@ -908,6 +805,7 @@ export function GA4Dashboard() {
             ))}
           </div>
         )}
+
         {ts.length > 0 && (
           <ShineCard shineColor={raw.shineColor} className={`${tw.card} border ${tw.border} rounded-2xl p-4 md:p-6`}>
             <p className={`${tw.subtext} text-xs font-bold uppercase tracking-widest mb-5`}>Traffic Over Time</p>
@@ -925,6 +823,7 @@ export function GA4Dashboard() {
             </ResponsiveContainer>
           </ShineCard>
         )}
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {data.trafficSources.length > 0 && (
             <ShineCard shineColor={raw.shineColor} className={`${tw.card} border ${tw.border} rounded-2xl p-6`}>
@@ -948,7 +847,6 @@ export function GA4Dashboard() {
               </div>
             </ShineCard>
           )}
-
           {data.devices.length > 0 && (
             <ShineCard shineColor={raw.shineColor} className={`${tw.card} border ${tw.border} rounded-2xl p-6`}>
               <p className={`${tw.subtext} text-xs font-bold uppercase tracking-widest mb-5`}>Devices</p>
@@ -976,6 +874,7 @@ export function GA4Dashboard() {
             </ShineCard>
           )}
         </div>
+
         {data.callEvents && data.callEvents.length > 0 ? (
           <ShineCard shineColor={raw.shineColor} className={`${tw.card} border ${tw.border} rounded-2xl p-6`}>
             <div className="flex items-center gap-2 mb-4">
@@ -1004,21 +903,25 @@ export function GA4Dashboard() {
             </div>
           </ShineCard>
         )}
+
         <ShineCard shineColor={raw.shineColor} className={`${tw.card} border ${tw.border} rounded-2xl p-4 md:p-8`}>
           <GoogleAdsMetrics
             dateRange={{ start: activeStart, end: activeEnd }}
             theme={theme} themeStyles={{ ...tw, chartGrid: raw.border, accentText: tw.accentText }}
           />
         </ShineCard>
+
         <ShineCard shineColor={raw.shineColor} className={`${tw.card} border ${tw.border} rounded-2xl p-4 md:p-8`}>
           <MetricoolMetrics
             dateRange={{ start: activeStart, end: activeEnd }}
             theme={theme} themeStyles={{ ...tw, chartGrid: raw.border, accentText: tw.accentText }}
           />
         </ShineCard>
+
         {data.topPages.length > 0 && (
           <TopPagesSection pages={data.topPages} tw={tw} raw={raw} />
         )}
+
         {data.countries.length > 0 && (
           <ShineCard shineColor={raw.shineColor} className={`${tw.card} border ${tw.border} rounded-2xl p-4 md:p-6`}>
             <p className={`${tw.subtext} text-xs font-bold uppercase tracking-widest mb-5`}>Global Audience</p>
