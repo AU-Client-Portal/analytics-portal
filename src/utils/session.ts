@@ -12,6 +12,7 @@ async function attachCustomFields(
         headers: {
           'X-API-Key': process.env.COPILOT_API_KEY!,
         },
+        cache: 'no-store',
       }
     );
 
