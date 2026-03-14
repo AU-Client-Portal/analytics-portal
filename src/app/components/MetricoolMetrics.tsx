@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Users, FileText, Heart, Radio, ThumbsUp, MessageCircle, Instagram, Linkedin, Facebook, Twitter, Share2, Eye, AlertCircle, Settings, LinkIcon } from 'lucide-react';
+import { Users, FileText, Heart, Radio, ThumbsUp, MessageCircle, Instagram, Linkedin, Facebook, Twitter, Share2, Eye } from 'lucide-react';
 import { MOCK_METRICOOL } from './mockData';
 import type { Theme } from './GA4Dashboard';
 
@@ -46,14 +46,11 @@ function fmtNum(n: number | undefined): string {
   return n.toLocaleString();
 }
 
-type MetricoolErrorType = 'not_configured' | 'missing_credentials' | 'api_error' | 'generic';
-
-function classifyMetricoolError(message: string): MetricoolErrorType {
+function classifyMetricoolError(message: string): 'not_configured' | 'api_error' | 'other' {
   const m = message?.toLowerCase() ?? '';
-  if (m.includes('metricool is not configured')) return 'not_configured';
-  if (m.includes('metricool credentials')) return 'missing_credentials';
+  if (m.includes('metricool is not configured') || m.includes('metricool credentials')) return 'not_configured';
   if (m.includes('metricool api error')) return 'api_error';
-  return 'generic';
+  return 'other';
 }
 
 function MetricoolErrorState({ error, colors, t }: { error: string; colors: any; t: any }) {
@@ -61,86 +58,36 @@ function MetricoolErrorState({ error, colors, t }: { error: string; colors: any;
 
   const containerStyle = {
     borderRadius: 16,
-    padding: '24px 28px',
+    padding: '28px 32px',
     border: `1.5px solid ${colors.border}`,
     background: `${colors.ring1}06`,
+    textAlign: 'center' as const,
   };
-
-  const Step = ({ n, children }: { n: number; children: React.ReactNode }) => (
-    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 8 }}>
-      <span style={{
-        flexShrink: 0, width: 20, height: 20, borderRadius: '50%',
-        background: `${colors.ring1}20`, color: colors.ring1,
-        fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center',
-        marginTop: 1,
-      }}>{n}</span>
-      <span className={t.subtext} style={{ fontSize: 13, lineHeight: 1.5 }}>{children}</span>
-    </div>
-  );
-
-  const Code = ({ children }: { children: React.ReactNode }) => (
-    <code style={{ background: `${colors.ring1}15`, color: colors.ring1, fontSize: 11, padding: '1px 6px', borderRadius: 4 }}>{children}</code>
-  );
 
   if (type === 'not_configured') return (
     <div style={containerStyle}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-        <div style={{ width: 36, height: 36, borderRadius: 10, background: `${colors.ring1}15`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <LinkIcon size={18} style={{ color: colors.ring1 }} />
-        </div>
-        <div>
-          <p className={t.text} style={{ fontWeight: 700, fontSize: 15, margin: 0 }}>Metricool not connected</p>
-          <p className={t.subtext} style={{ fontSize: 12, margin: 0 }}>Blog ID missing in Assembly CRM</p>
-        </div>
-      </div>
-      <Step n={1}>Open this client&apos;s company record in Assembly CRM</Step>
-      <Step n={2}>Add custom field <Code>metricoolBlogId</Code> with their Metricool profile/blog ID</Step>
-      <Step n={3}>Find the blog ID in Metricool under account settings</Step>
-    </div>
-  );
-
-  if (type === 'missing_credentials') return (
-    <div style={containerStyle}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-        <div style={{ width: 36, height: 36, borderRadius: 10, background: `${colors.ring2}15`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <Settings size={18} style={{ color: colors.ring2 }} />
-        </div>
-        <div>
-          <p className={t.text} style={{ fontWeight: 700, fontSize: 15, margin: 0 }}>Metricool API not configured</p>
-          <p className={t.subtext} style={{ fontSize: 12, margin: 0 }}>Missing environment variables in Vercel</p>
-        </div>
-      </div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-        {['METRICOOL_USER_ID', 'METRICOOL_API_TOKEN'].map(v => (
-          <Code key={v}>{v}</Code>
-        ))}
-      </div>
-      <p className={t.subtext} style={{ fontSize: 11, marginTop: 10 }}>Vercel → Project → Settings → Environment Variables</p>
+      <p className={t.text} style={{ fontWeight: 700, fontSize: 15, marginBottom: 8 }}>Social media not connected</p>
+      <p className={t.subtext} style={{ fontSize: 13, lineHeight: 1.6 }}>
+        Your social media accounts haven&apos;t been linked to this dashboard yet. Contact your account manager to get this set up.
+      </p>
     </div>
   );
 
   if (type === 'api_error') return (
     <div style={containerStyle}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-        <div style={{ width: 36, height: 36, borderRadius: 10, background: `${colors.ring3}15`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <AlertCircle size={18} style={{ color: colors.ring3 }} />
-        </div>
-        <div>
-          <p className={t.text} style={{ fontWeight: 700, fontSize: 15, margin: 0 }}>Metricool API error</p>
-          <p className={t.subtext} style={{ fontSize: 12, margin: 0 }}>The Metricool API returned an error</p>
-        </div>
-      </div>
-      <p className={t.subtext} style={{ fontSize: 12 }}>Check that the <Code>metricoolBlogId</Code> in Assembly CRM is correct and that the API token has access to this blog.</p>
+      <p className={t.text} style={{ fontWeight: 700, fontSize: 15, marginBottom: 8 }}>Social media temporarily unavailable</p>
+      <p className={t.subtext} style={{ fontSize: 13, lineHeight: 1.6 }}>
+        We couldn&apos;t connect to your social media data right now. Please try again later or contact your account manager if this continues.
+      </p>
     </div>
   );
 
   return (
-    <div style={{ ...containerStyle, background: '#fef2f225', border: '1.5px solid #fca5a5' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-        <AlertCircle size={16} style={{ color: '#ef4444', flexShrink: 0 }} />
-        <p style={{ color: '#dc2626', fontWeight: 700, fontSize: 14, margin: 0 }}>Metricool error</p>
-      </div>
-      <p style={{ color: '#ef4444', fontSize: 12, margin: 0 }}>{error}</p>
+    <div style={containerStyle}>
+      <p className={t.text} style={{ fontWeight: 700, fontSize: 15, marginBottom: 8 }}>Social media unavailable</p>
+      <p className={t.subtext} style={{ fontSize: 13, lineHeight: 1.6 }}>
+        We couldn&apos;t load your social media data. Please contact your account manager if this continues.
+      </p>
     </div>
   );
 }
@@ -178,13 +125,7 @@ function SocialCard({ title, value, icon, index, accentColor, t }: {
       </div>
       <p
         className={`${t.text} font-bold tracking-tight`}
-        style={{
-          fontSize: 'clamp(0.9rem, 4vw, 1.5rem)',
-          wordBreak: 'break-all',
-          color: hovered ? accentColor : undefined,
-          transition: 'color 0.2s',
-          lineHeight: 1.15,
-        }}
+        style={{ fontSize: 'clamp(0.9rem, 4vw, 1.5rem)', wordBreak: 'break-all', color: hovered ? accentColor : undefined, transition: 'color 0.2s', lineHeight: 1.15 }}
       >
         {value}
       </p>
@@ -299,11 +240,8 @@ export function MetricoolMetrics({ dateRange, theme, themeStyles: t }: Props) {
   );
 
   if (error) return (
-    <div className="space-y-3">
-      <div>
-        <h2 className={`${t.text} text-xl font-bold tracking-tight`}>Social Media Performance</h2>
-        <p className={`${t.subtext} text-xs mt-0.5`}>Setup required</p>
-      </div>
+    <div className="space-y-4">
+      <h2 className={`${t.text} text-xl font-bold tracking-tight`}>Social Media Performance</h2>
       <MetricoolErrorState error={error} colors={colors} t={t} />
     </div>
   );
@@ -322,12 +260,12 @@ export function MetricoolMetrics({ dateRange, theme, themeStyles: t }: Props) {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-3">
-        <SocialCard title="Followers"    value={fmtNum(stats.totalFollowers)}                                  icon={<Users size={15}/>}    index={0} accentColor={cardAccents[0]} t={t} />
-        <SocialCard title="Total Posts"  value={fmtNum(stats.totalPosts)}                                      icon={<FileText size={15}/>} index={1} accentColor={cardAccents[1]} t={t} />
-        <SocialCard title="Total Reach"  value={fmtNum(stats.totalReach)}                                      icon={<Eye size={15}/>}      index={2} accentColor={cardAccents[2]} t={t} />
-        <SocialCard title="Engagement"   value={stats.engagementRate ? `${stats.engagementRate.toFixed(2)}%` : '—'} icon={<Heart size={15}/>}  index={3} accentColor={cardAccents[3]} t={t} />
-        <SocialCard title="Impressions"  value={fmtNum(stats.totalImpressions)}                                icon={<Radio size={15}/>}    index={4} accentColor={cardAccents[4]} t={t} />
-        <SocialCard title="Shares"       value={fmtNum(stats.totalShares)}                                     icon={<Share2 size={15}/>}   index={5} accentColor={cardAccents[5]} t={t} />
+        <SocialCard title="Followers"    value={fmtNum(stats.totalFollowers)}                                       icon={<Users size={15}/>}    index={0} accentColor={cardAccents[0]} t={t} />
+        <SocialCard title="Total Posts"  value={fmtNum(stats.totalPosts)}                                           icon={<FileText size={15}/>} index={1} accentColor={cardAccents[1]} t={t} />
+        <SocialCard title="Total Reach"  value={fmtNum(stats.totalReach)}                                           icon={<Eye size={15}/>}      index={2} accentColor={cardAccents[2]} t={t} />
+        <SocialCard title="Engagement"   value={stats.engagementRate ? `${stats.engagementRate.toFixed(2)}%` : '—'} icon={<Heart size={15}/>}    index={3} accentColor={cardAccents[3]} t={t} />
+        <SocialCard title="Impressions"  value={fmtNum(stats.totalImpressions)}                                     icon={<Radio size={15}/>}    index={4} accentColor={cardAccents[4]} t={t} />
+        <SocialCard title="Shares"       value={fmtNum(stats.totalShares)}                                          icon={<Share2 size={15}/>}   index={5} accentColor={cardAccents[5]} t={t} />
       </div>
 
       {posts.length > 0 && (

@@ -134,8 +134,14 @@ export async function GET(request: NextRequest) {
 
   } catch (error: any) {
     console.error('Google Ads API Error:', error);
+
+    const details =
+      error?.errors?.[0]?.message ||
+      error?.message ||
+      String(error);
+
     return NextResponse.json(
-      { error: 'Failed to fetch Google Ads data', details: error.message },
+      { error: 'Failed to fetch Google Ads data', details },
       { status: 500 }
     );
   }
