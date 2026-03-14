@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Users, FileText, Heart, Radio, ThumbsUp, MessageCircle, Instagram, Linkedin, Facebook, Twitter, Share2, Eye } from 'lucide-react';
+import { Users, FileText, Heart, Radio, ThumbsUp, MessageCircle, Instagram, Linkedin, Facebook, Twitter, Share2, Eye, AlertCircle, Settings, LinkIcon } from 'lucide-react';
 import { MOCK_METRICOOL } from './mockData';
 import type { Theme } from './GA4Dashboard';
 
@@ -44,6 +44,105 @@ function fmtNum(n: number | undefined): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 10_000)    return `${Math.round(n / 1000)}K`;
   return n.toLocaleString();
+}
+
+type MetricoolErrorType = 'not_configured' | 'missing_credentials' | 'api_error' | 'generic';
+
+function classifyMetricoolError(message: string): MetricoolErrorType {
+  const m = message?.toLowerCase() ?? '';
+  if (m.includes('metricool is not configured')) return 'not_configured';
+  if (m.includes('metricool credentials')) return 'missing_credentials';
+  if (m.includes('metricool api error')) return 'api_error';
+  return 'generic';
+}
+
+function MetricoolErrorState({ error, colors, t }: { error: string; colors: any; t: any }) {
+  const type = classifyMetricoolError(error);
+
+  const containerStyle = {
+    borderRadius: 16,
+    padding: '24px 28px',
+    border: `1.5px solid ${colors.border}`,
+    background: `${colors.ring1}06`,
+  };
+
+  const Step = ({ n, children }: { n: number; children: React.ReactNode }) => (
+    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 8 }}>
+      <span style={{
+        flexShrink: 0, width: 20, height: 20, borderRadius: '50%',
+        background: `${colors.ring1}20`, color: colors.ring1,
+        fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        marginTop: 1,
+      }}>{n}</span>
+      <span className={t.subtext} style={{ fontSize: 13, lineHeight: 1.5 }}>{children}</span>
+    </div>
+  );
+
+  const Code = ({ children }: { children: React.ReactNode }) => (
+    <code style={{ background: `${colors.ring1}15`, color: colors.ring1, fontSize: 11, padding: '1px 6px', borderRadius: 4 }}>{children}</code>
+  );
+
+  if (type === 'not_configured') return (
+    <div style={containerStyle}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+        <div style={{ width: 36, height: 36, borderRadius: 10, background: `${colors.ring1}15`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <LinkIcon size={18} style={{ color: colors.ring1 }} />
+        </div>
+        <div>
+          <p className={t.text} style={{ fontWeight: 700, fontSize: 15, margin: 0 }}>Metricool not connected</p>
+          <p className={t.subtext} style={{ fontSize: 12, margin: 0 }}>Blog ID missing in Assembly CRM</p>
+        </div>
+      </div>
+      <Step n={1}>Open this client&apos;s company record in Assembly CRM</Step>
+      <Step n={2}>Add custom field <Code>metricoolBlogId</Code> with their Metricool profile/blog ID</Step>
+      <Step n={3}>Find the blog ID in Metricool under account settings</Step>
+    </div>
+  );
+
+  if (type === 'missing_credentials') return (
+    <div style={containerStyle}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+        <div style={{ width: 36, height: 36, borderRadius: 10, background: `${colors.ring2}15`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Settings size={18} style={{ color: colors.ring2 }} />
+        </div>
+        <div>
+          <p className={t.text} style={{ fontWeight: 700, fontSize: 15, margin: 0 }}>Metricool API not configured</p>
+          <p className={t.subtext} style={{ fontSize: 12, margin: 0 }}>Missing environment variables in Vercel</p>
+        </div>
+      </div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+        {['METRICOOL_USER_ID', 'METRICOOL_API_TOKEN'].map(v => (
+          <Code key={v}>{v}</Code>
+        ))}
+      </div>
+      <p className={t.subtext} style={{ fontSize: 11, marginTop: 10 }}>Vercel → Project → Settings → Environment Variables</p>
+    </div>
+  );
+
+  if (type === 'api_error') return (
+    <div style={containerStyle}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+        <div style={{ width: 36, height: 36, borderRadius: 10, background: `${colors.ring3}15`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <AlertCircle size={18} style={{ color: colors.ring3 }} />
+        </div>
+        <div>
+          <p className={t.text} style={{ fontWeight: 700, fontSize: 15, margin: 0 }}>Metricool API error</p>
+          <p className={t.subtext} style={{ fontSize: 12, margin: 0 }}>The Metricool API returned an error</p>
+        </div>
+      </div>
+      <p className={t.subtext} style={{ fontSize: 12 }}>Check that the <Code>metricoolBlogId</Code> in Assembly CRM is correct and that the API token has access to this blog.</p>
+    </div>
+  );
+
+  return (
+    <div style={{ ...containerStyle, background: '#fef2f225', border: '1.5px solid #fca5a5' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+        <AlertCircle size={16} style={{ color: '#ef4444', flexShrink: 0 }} />
+        <p style={{ color: '#dc2626', fontWeight: 700, fontSize: 14, margin: 0 }}>Metricool error</p>
+      </div>
+      <p style={{ color: '#ef4444', fontSize: 12, margin: 0 }}>{error}</p>
+    </div>
+  );
 }
 
 function SocialCard({ title, value, icon, index, accentColor, t }: {
@@ -200,9 +299,12 @@ export function MetricoolMetrics({ dateRange, theme, themeStyles: t }: Props) {
   );
 
   if (error) return (
-    <div className="rounded-2xl border border-red-300 p-5" style={{ background: '#fef2f2' }}>
-      <p className="text-red-600 font-semibold text-sm">Metricool error</p>
-      <p className="text-red-500 text-xs mt-1">{error}</p>
+    <div className="space-y-3">
+      <div>
+        <h2 className={`${t.text} text-xl font-bold tracking-tight`}>Social Media Performance</h2>
+        <p className={`${t.subtext} text-xs mt-0.5`}>Setup required</p>
+      </div>
+      <MetricoolErrorState error={error} colors={colors} t={t} />
     </div>
   );
 

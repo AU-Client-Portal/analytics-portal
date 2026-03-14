@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { MousePointerClick, Eye, TrendingUp, DollarSign, Target, Award, Percent, Calculator } from 'lucide-react';
+import { MousePointerClick, Eye, TrendingUp, DollarSign, Target, Award, Percent, Calculator, AlertCircle, Settings, LinkIcon } from 'lucide-react';
 import { MOCK_GOOGLE_ADS } from './mockData';
 import type { Theme } from './GA4Dashboard';
 
@@ -39,6 +39,108 @@ function fmtNum(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 10_000)    return `${Math.round(n / 1000)}K`;
   return n.toLocaleString();
+}
+
+type AdsErrorType = 'not_configured' | 'no_permission' | 'missing_env' | 'generic';
+
+function classifyAdsError(message: string): AdsErrorType {
+  const m = message?.toLowerCase() ?? '';
+  if (m.includes('google ads is not configured')) return 'not_configured';
+  if (m.includes("doesn't have permission") || m.includes('login-customer-id') || m.includes('permission')) return 'no_permission';
+  if (m.includes('server configuration error') || m.includes('missing')) return 'missing_env';
+  return 'generic';
+}
+
+function AdsErrorState({ error, colors, t }: { error: string; colors: any; t: any }) {
+  const type = classifyAdsError(error);
+
+  const containerStyle = {
+    borderRadius: 16,
+    padding: '24px 28px',
+    border: `1.5px solid ${colors.border}`,
+    background: `${colors.ring1}06`,
+  };
+
+  const Step = ({ n, children }: { n: number; children: React.ReactNode }) => (
+    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 8 }}>
+      <span style={{
+        flexShrink: 0, width: 20, height: 20, borderRadius: '50%',
+        background: `${colors.ring1}20`, color: colors.ring1,
+        fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        marginTop: 1,
+      }}>{n}</span>
+      <span className={t.subtext} style={{ fontSize: 13, lineHeight: 1.5 }}>{children}</span>
+    </div>
+  );
+
+  const Code = ({ children }: { children: React.ReactNode }) => (
+    <code style={{ background: `${colors.ring1}15`, color: colors.ring1, fontSize: 11, padding: '1px 6px', borderRadius: 4 }}>{children}</code>
+  );
+
+  if (type === 'not_configured') return (
+    <div style={containerStyle}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+        <div style={{ width: 36, height: 36, borderRadius: 10, background: `${colors.ring1}15`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Target size={18} style={{ color: colors.ring1 }} />
+        </div>
+        <div>
+          <p className={t.text} style={{ fontWeight: 700, fontSize: 15, margin: 0 }}>Google Ads not connected</p>
+          <p className={t.subtext} style={{ fontSize: 12, margin: 0 }}>Customer ID missing in Assembly CRM</p>
+        </div>
+      </div>
+      <Step n={1}>Open this client&apos;s company record in Assembly CRM</Step>
+      <Step n={2}>Add custom field <Code>adsCustomerId</Code> with their 10-digit Google Ads ID — no dashes</Step>
+      <Step n={3}>Find their ID in the top-right corner of <Code>ads.google.com</Code></Step>
+    </div>
+  );
+
+  if (type === 'no_permission') return (
+    <div style={containerStyle}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+        <div style={{ width: 36, height: 36, borderRadius: 10, background: `${colors.ring2}15`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <LinkIcon size={18} style={{ color: colors.ring2 }} />
+        </div>
+        <div>
+          <p className={t.text} style={{ fontWeight: 700, fontSize: 15, margin: 0 }}>Manager account access required</p>
+          <p className={t.subtext} style={{ fontSize: 12, margin: 0 }}>Art Unlimited needs permission to access this account</p>
+        </div>
+      </div>
+      <Step n={1}>Log into the Art Unlimited Google Ads Manager account</Step>
+      <Step n={2}>Go to <Code>Accounts → Sub-accounts</Code> → click <Code>+</Code> → Request access</Step>
+      <Step n={3}>Enter the client&apos;s customer ID and submit</Step>
+      <Step n={4}>Client approves the request via the email they receive</Step>
+    </div>
+  );
+
+  if (type === 'missing_env') return (
+    <div style={containerStyle}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+        <div style={{ width: 36, height: 36, borderRadius: 10, background: `${colors.ring3}15`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Settings size={18} style={{ color: colors.ring3 }} />
+        </div>
+        <div>
+          <p className={t.text} style={{ fontWeight: 700, fontSize: 15, margin: 0 }}>Google Ads API not configured</p>
+          <p className={t.subtext} style={{ fontSize: 12, margin: 0 }}>Missing environment variables in Vercel</p>
+        </div>
+      </div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+        {['GOOGLE_ADS_CLIENT_ID', 'GOOGLE_ADS_CLIENT_SECRET', 'GOOGLE_ADS_DEVELOPER_TOKEN', 'GOOGLE_ADS_REFRESH_TOKEN'].map(v => (
+          <Code key={v}>{v}</Code>
+        ))}
+      </div>
+      <p className={t.subtext} style={{ fontSize: 11, marginTop: 10 }}>Vercel → Project → Settings → Environment Variables</p>
+    </div>
+  );
+
+  return (
+    <div style={{ ...containerStyle, background: '#fef2f225', border: '1.5px solid #fca5a5' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+        <AlertCircle size={16} style={{ color: '#ef4444', flexShrink: 0 }} />
+        <p style={{ color: '#dc2626', fontWeight: 700, fontSize: 14, margin: 0 }}>Google Ads error</p>
+      </div>
+      <p style={{ color: '#ef4444', fontSize: 12, margin: 0 }}>{error}</p>
+    </div>
+  );
 }
 
 function AdMetricCard({ title, value, sub, icon, index, accentColor, t }: {
@@ -148,20 +250,6 @@ function CampaignRow({ campaign, maxCost, maxConv, index, colors, t }: {
   );
 }
 
-const CustomTooltip = ({ active, payload, label, t }: any) => {
-  if (!active || !payload?.length) return null;
-  return (
-    <div className={`${t.card} border ${t.border} rounded-xl p-3 shadow-xl text-sm`} style={{ boxShadow: '0 8px 32px rgba(0,0,0,0.2)' }}>
-      <p className={`${t.subtext} mb-2 text-xs font-semibold truncate max-w-[180px]`}>{label}</p>
-      {payload.map((p: any, i: number) => (
-        <p key={i} style={{ color: p.color }} className="font-semibold">
-          {p.name}: {typeof p.value === 'number' && p.name.includes('$') ? `$${p.value.toFixed(2)}` : p.value?.toLocaleString()}
-        </p>
-      ))}
-    </div>
-  );
-};
-
 const ACCENT: Record<Theme, { ring1: string; ring2: string; ring3: string; ring4: string; track: string; border: string }> = {
   light:  { ring1: '#003F27', ring2: '#f59e0b', ring3: '#ef4444', ring4: '#3b82f6', track: '#e8ecf0', border: '#dde2e8' },
   dark:   { ring1: '#4ade80', ring2: '#fbbf24', ring3: '#f87171', ring4: '#60a5fa', track: '#2c3040', border: '#2c3040' },
@@ -202,20 +290,20 @@ export function GoogleAdsMetrics({ dateRange, theme, themeStyles: t }: Props) {
     </div>
   );
 
-  if (data?.hasGoogleAds === false) return (
-    <div className={`rounded-2xl border ${t.border} p-10 text-center`}>
-      <div className={`w-14 h-14 rounded-full ${t.trackBg} flex items-center justify-center mx-auto mb-4`}>
-        <Target size={22} style={{ color: colors.ring1 }} />
+  if (error) return (
+    <div className="space-y-3">
+      <div>
+        <h2 className={`${t.text} text-xl font-bold tracking-tight`}>Google Ads Performance</h2>
+        <p className={`${t.subtext} text-xs mt-0.5`}>Setup required</p>
       </div>
-      <p className={`${t.text} font-semibold mb-1`}>Google Ads Not Configured</p>
-      <p className={`${t.subtext} text-sm`}>Contact your account manager to enable Google Ads tracking.</p>
+      <AdsErrorState error={error} colors={colors} t={t} />
     </div>
   );
 
-  if (error) return (
-    <div className="rounded-2xl border border-red-300 p-5" style={{ background: '#fef2f2' }}>
-      <p className="text-red-600 font-semibold text-sm">Google Ads error</p>
-      <p className="text-red-500 text-xs mt-1">{error}</p>
+  if (data?.hasGoogleAds === false) return (
+    <div className="space-y-3">
+      <h2 className={`${t.text} text-xl font-bold tracking-tight`}>Google Ads Performance</h2>
+      <AdsErrorState error="Google Ads is not configured for your account." colors={colors} t={t} />
     </div>
   );
 

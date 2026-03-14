@@ -14,7 +14,7 @@ type ErrorType =
 function classifyError(message: string): ErrorType {
   const m = message?.toLowerCase() ?? '';
 
-  if (m.includes('session token is required') || m.includes('no_token')) return 'auth';
+  if (m.includes('session token is required') || m.includes('no_token') || m.includes('unauthorized') || m.includes('token') && m.includes('required')) return 'auth';
   if (m.includes('ga4 is not configured')) return 'ga4_not_configured';
   if (m.includes('google ads is not configured')) return 'ads_not_configured';
   if (m.includes('metricool is not configured')) return 'metricool_not_configured';
