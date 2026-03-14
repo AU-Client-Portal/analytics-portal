@@ -93,7 +93,7 @@ function ErrorContent({ type, message }: { type: ErrorType; message: string }) {
           <p className="text-[#7a5c3a] text-sm mb-4">
             A GA4 Property ID hasn&apos;t been added for this account. To fix this:
           </p>
-          <Step number={1}>Open this client's company record in Assembly CRM</Step>
+          <Step number={1}>Open this client&apos;s company record in Assembly CRM</Step>
           <Step number={2}>Add the custom field <Code>ga4PropertyId</Code> with their Google Analytics Property ID (numbers only)</Step>
           <Step number={3}>Find the Property ID in GA4 → Admin → Property Settings</Step>
         </>
@@ -107,7 +107,7 @@ function ErrorContent({ type, message }: { type: ErrorType; message: string }) {
           <p className="text-[#7a5c3a] text-sm mb-4">
             A Google Ads customer ID hasn&apos;t been added for this account. To fix this:
           </p>
-          <Step number={1}>Open this client's company record in Assembly CRM</Step>
+          <Step number={1}>Open this client&apos;s company record in Assembly CRM</Step>
           <Step number={2}>Add the custom field <Code>adsCustomerId</Code> with their 10-digit Google Ads ID — no dashes</Step>
           <Step number={3}>Find the customer ID in the top right corner of their Google Ads account</Step>
         </>
@@ -121,7 +121,7 @@ function ErrorContent({ type, message }: { type: ErrorType; message: string }) {
           <p className="text-[#7a5c3a] text-sm mb-4">
             A Metricool Blog ID hasn&apos;t been added for this account. To fix this:
           </p>
-          <Step number={1}>Open this client's company record in Assembly CRM</Step>
+          <Step number={1}>Open this client&apos;s company record in Assembly CRM</Step>
           <Step number={2}>Add the custom field <Code>metricoolBlogId</Code> with their Metricool profile/blog ID</Step>
         </>
       );
@@ -137,7 +137,7 @@ function ErrorContent({ type, message }: { type: ErrorType; message: string }) {
           <Step number={1}>Client goes to <Code>analytics.google.com</Code> → Admin → Property Access Management</Step>
           <Step number={2}>Click <Code>+</Code> → Add users</Step>
           <Step number={3}>Enter <Code>wordpress-portal-v2@client-portal-au-site.iam.gserviceaccount.com</Code> with Viewer role</Step>
-          <Step number={4}>Make sure it's added at the Property level, not just Account level</Step>
+          <Step number={4}>Make sure it&apos;s added at the Property level, not just Account level</Step>
         </>
       );
 
@@ -151,7 +151,7 @@ function ErrorContent({ type, message }: { type: ErrorType; message: string }) {
           </p>
           <Step number={1}>Log into the Art Unlimited Google Ads Manager account</Step>
           <Step number={2}>Go to Accounts → Sub-accounts → click <Code>+</Code> → Request access to existing account</Step>
-          <Step number={3}>Enter the client's customer ID</Step>
+          <Step number={3}>Enter the client&apos;s customer ID</Step>
           <Step number={4}>Client approves the request via the email they receive</Step>
         </>
       );
