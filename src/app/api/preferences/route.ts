@@ -45,9 +45,11 @@ export async function POST(req: NextRequest) {
 
     if (!res.ok) {
       const text = await res.text();
+      console.log('Assembly PATCH failed:', res.status, text);
       return NextResponse.json({ error: `Assembly API error: ${text}` }, { status: res.status });
     }
 
+    console.log('Assembly PATCH success');
     return NextResponse.json({ ok: true });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });

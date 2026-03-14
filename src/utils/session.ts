@@ -102,13 +102,14 @@ export function getCompanyConfig(session: Awaited<ReturnType<typeof getSession>>
 
   const fields = (session.company as any).customFields ?? {};
 
+  // For Vercel Logs
   console.log('Custom fields received:', JSON.stringify(fields));
 
   return {
     companyId: session.company.id,
     name: (session.company as any).name ?? 'Unknown Company',
     ga4PropertyId: fields.ga4PropertyId ?? fields.ga4Propertyid ?? null,
-    adsCustomerId: fields.adsCustomerId ?? fields.adsCustomerid ?? null,
-    metricoolBlogId: fields.metricoolBlogId ?? fields.metricoolBlogid ?? null,
+    adsCustomerId: fields.adsCustomerId ?? fields.adsCustomerid ?? fields.adscustomerid ?? null,
+    metricoolBlogId: fields.metricoolBlogId ?? fields.metricoolBlogid ?? fields.metricoolblogid ?? null,
   };
 }
