@@ -528,7 +528,6 @@ export function GA4Dashboard() {
 
   const savePreferences = useCallback((prefs: DashboardPreferences) => {
     localStorage.setItem('dashboard-prefs', JSON.stringify(prefs));
-    console.log('savePreferences called, token:', token ? 'present' : 'missing');
     if (USE_MOCK || !token) return;
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(async () => {

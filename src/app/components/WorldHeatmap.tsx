@@ -3,8 +3,8 @@
 import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import { ChevronLeft, Globe, MapPin } from 'lucide-react';
 
-const WORLD_GEO_URL = 'https://unpkg.com/world-atlas@2/countries-110m.json';
-const US_GEO_URL = 'https://unpkg.com/us-atlas@3/states-10m.json';
+const WORLD_GEO_URL = '/api/geo/world';
+const US_GEO_URL = '/api/geo/us';
 
 const COUNTRY_NAME_MAP: Record<string, string> = {
   'United States': 'United States of America',
@@ -313,9 +313,7 @@ export const WorldHeatmap = forwardRef<{ getSelectedCountry: () => string | null
               borderRadius: 8, padding: '8px 14px', pointerEvents: 'none', zIndex: 10,
               whiteSpace: 'nowrap', boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
             }}>
-              <p style={{ color: C.tooltip.text, fontWeight: 700, fontSize: 13, margin: 0 }}>
-                {hovered.name}
-              </p>
+              <p style={{ color: C.tooltip.text, fontWeight: 700, fontSize: 13, margin: 0 }}>{hovered.name}</p>
               {hovered.users > 0 && (
                 <p style={{ color: C.tooltip.sub, fontSize: 12, margin: '3px 0 0', fontWeight: 600 }}>
                   {hovered.users.toLocaleString()} users
