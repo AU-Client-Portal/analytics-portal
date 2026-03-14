@@ -1,114 +1,165 @@
-# Analytics Portal — Custom Assembly App
+# Analytics Portal — Client Onboarding & Operations Guide
+
+## Overview
+
+This app is a custom analytics dashboard built inside Assembly (Copilot). Each client sees their own data — website traffic via GA4, ad performance via Google Ads, and social media via Metricool. Data is pulled live from each platform using credentials stored securely in Vercel environment variables. Per-client configuration (which accounts to pull from) is stored in Assembly CRM custom fields on each company record.
+
+---
 
 ## Environment Variables
 
-Add all of these in **Vercel → Project → Settings → Environment Variables**, then redeploy.
+Set once in **Vercel → Project → Settings → Environment Variables**. These apply across all clients — never share them.
 
 | Variable | Description |
 |---|---|
-| `COPILOT_API_KEY` | Generated when you create the app in the Copilot dashboard. Must match the workspace where client portal lives. |
-| `GA4_CLIENT_EMAIL` | The `client_email` field from your Google service account JSON (e.g. `name@project.iam.gserviceaccount.com`) |
-| `GA4_PRIVATE_KEY` | The `private_key` field from your Google service account JSON. Paste as a single line with literal `\n` characters — do NOT use real line breaks. The code handles conversion automatically. |
+| `COPILOT_API_KEY` | Generated in the Assembly dashboard when you registered the app |
+| `GA4_CLIENT_EMAIL` | The `client_email` from your Google service account JSON |
+| `GA4_PRIVATE_KEY` | The `private_key` from your Google service account JSON — paste as a single line with literal `\n`, no real line breaks |
 | `GOOGLE_ADS_CLIENT_ID` | OAuth2 client ID from Google Cloud Console |
 | `GOOGLE_ADS_CLIENT_SECRET` | OAuth2 client secret from Google Cloud Console |
-| `GOOGLE_ADS_DEVELOPER_TOKEN` | From your Google Ads API Center — this is your agency-level token, not per-client |
-| `GOOGLE_ADS_REFRESH_TOKEN` | OAuth2 refresh token authorized against your Google Ads account |
-| `GOOGLE_ADS_LOGIN_CUSTOMER_ID` | Your top-level Google Ads Manager (MCC) account ID — no dashes (e.g. `1234567890`). Only required if accessing client accounts through a manager account. |
-| `METRICOOL_USER_ID` | Your Metricool user ID |
-| `METRICOOL_API_TOKEN` | Your Metricool API token |
+| `GOOGLE_ADS_DEVELOPER_TOKEN` | From your Google Ads API Center — agency-level, not per-client |
+| `GOOGLE_ADS_REFRESH_TOKEN` | OAuth2 refresh token for your Google Ads account |
+| `GOOGLE_ADS_LOGIN_CUSTOMER_ID` | Your MCC manager account ID — no dashes. Omit if using direct account access |
+| `METRICOOL_USER_ID` | Your Metricool user ID (Settings → Account) |
+| `METRICOOL_API_TOKEN` | Your Metricool API token (Settings → API, paid plan required) |
 
-> **Note on GA4_PRIVATE_KEY format:** Open the downloaded `.json` file, copy only the value of `"private_key"` (the long string starting with `-----BEGIN RSA PRIVATE KEY-----`). It should be one continuous line. Do not wrap it in extra quotes.
+> **GA4_PRIVATE_KEY format:** Copy only the `"private_key"` value from the JSON file — the long string starting with `-----BEGIN RSA PRIVATE KEY-----`. It must be one continuous line with no extra quotes.
 
 ---
 
-## Onboarding a New Client
+## Onboarding a New Client — Step by Step
 
-Each new client requires setup in **three places**: Assembly CRM, their Google Analytics, and optionally Google Ads and Metricool.
-
-### Step 1 — Add Client in Assembly
+### Step 1 — Add the Client in Assembly
 
 1. Go to your [Assembly Dashboard](https://dashboard.copilot.app)
 2. Navigate to **Clients → Add Client**
-3. Fill in their details and send portal invite
-
-### Step 2 — Configure Client in the CRM Company Record
-
-Open the client's company record in Assembly and add the following custom fields depending on which integrations they use:
-
-| Field | Description |
-|---|---|
-| `ga4PropertyId` | Their GA4 Property ID — numbers only (e.g. `527554885`) |
-| `adsCustomerId` | Their Google Ads customer ID — no dashes (e.g. `8449244433`) |
-| `metricoolBlogId` | Their Metricool Blog/Profile ID |
-
-> **Important:** Assembly stores custom field keys in all-lowercase internally. The app handles this automatically, but make sure you're entering the values (not keys) correctly.
+3. Fill in their name, email, and company details
+4. Send them their portal invite link
+5. Open their **company record** — you will add integration IDs in the steps below
 
 ---
 
-### Step 3 — Grant Service Account Access to Client's GA4
+### Step 2 — Connect Their Google Analytics (GA4)
 
-This step is **required for GA4 to work**.
+**2a — Find their GA4 Property ID:**
 
-**Send the client these instructions:**
-
-1. Go to [analytics.google.com](https://analytics.google.com)
+1. Log into [analytics.google.com](https://analytics.google.com) — either using client access or your own if you manage their account
 2. Click **Admin** (gear icon, bottom left)
-3. Make sure the correct **Account and Property** are selected
-4. Under the **Property** column → click **Property Access Management**
-5. Click the blue **+** button → **Add users**
-6. Enter the service account email:
-   ```
-   wordpress-portal-v2@client-portal-au-site.iam.gserviceaccount.com
-   ```
-7. Set role to **Viewer** → click **Add**
+3. Confirm the correct **Account** and **Property** are selected at the top
+4. Under the **Property** column → click **Property Settings**
+5. Copy the **Property ID** — it's a plain number, e.g. `527554885`
+6. Enter it as `ga4PropertyId` in their Assembly company record
 
-> ⚠️ The service account must be added at the **Property** level, not just the Account level.
+**2b — Grant the service account read access:**
 
-### Step 4 — Verify the GA4 Property ID
+The dashboard reads GA4 data through a Google service account. The client must grant it Viewer access — without this the dashboard shows a permissions error.
 
-1. In GA4 Admin → **Property Settings** → copy the **Property ID** (a plain number)
-2. Make sure this matches exactly what you entered in the CRM field `ga4PropertyId`
+Send the client these instructions:
+1. Go to [analytics.google.com](https://analytics.google.com) → Admin
+2. Under the **Property** column → click **Property Access Management**
+3. Click the blue **+** button → **Add users**
+4. Enter: `wordpress-portal-v2@client-portal-au-site.iam.gserviceaccount.com`
+5. Set the role to **Viewer** → click **Add**
+
+> ⚠️ Must be done at the **Property** level, not just the Account level.
 
 ---
 
-### Step 5 — (Optional) Google Ads Setup
+### Step 3 — Connect Their Google Ads
 
-Google Ads requires two things: the client's account ID in the CRM, and your agency's Google Ads manager account having permission to access their account.
-
-#### 5a — Add the client's customer ID to the CRM
+**3a — Find their Google Ads Customer ID:**
 
 1. Client logs into [ads.google.com](https://ads.google.com)
-2. Their customer ID is shown in the **top right corner** next to their account name — it looks like `123-456-7890`
-3. Remove the dashes and enter it as `adsCustomerId` in their Assembly company record (e.g. `1234567890`)
+2. Their customer ID appears in the **top right corner** next to their account name — it looks like `123-456-7890`
+3. Remove the dashes → e.g. `1234567890`
+4. Enter it as `adsCustomerId` in their Assembly company record
 
-#### 5b — Connect Art Unlimited's Manager Account to the client's Google Ads
+**3b — Link Art Unlimited's manager account:**
 
-The client must approve Art Unlimited's manager account so the API can pull their data. There are two ways to do this:
+The API pulls Google Ads data using Art Unlimited's credentials. The client's account must approve Art Unlimited's manager (MCC) account — without this the dashboard shows "manager account access required."
 
 **Option A — Art Unlimited sends a request (recommended):**
 1. Log into the Art Unlimited Google Ads Manager account at [ads.google.com](https://ads.google.com)
 2. Go to **Accounts → Sub-accounts** in the left nav
 3. Click **+** → **Request access to existing account**
 4. Enter the client's customer ID
-5. The client receives an email — they click **Approve**
+5. The client receives an email → they click **Approve**
 
-**Option B — Client adds Art Unlimited directly:**
-1. Client logs into their Google Ads account
+**Option B — Client links the manager account directly:**
+1. Client logs into their Google Ads
 2. Goes to **Admin → Access and security → Managers** tab
 3. Clicks **+ Link a manager account**
 4. Enters Art Unlimited's MCC ID
-5. Art Unlimited approves the request from their manager account
+5. Art Unlimited approves from their manager account
 
-Once linked, set `GOOGLE_ADS_LOGIN_CUSTOMER_ID` in Vercel to Art Unlimited's MCC account ID (no dashes) and redeploy.
+Once access is granted, confirm `GOOGLE_ADS_LOGIN_CUSTOMER_ID` is set in Vercel to Art Unlimited's MCC ID (no dashes).
 
-> **No MCC?** If you have direct access to the client's account (not through a manager account), leave `GOOGLE_ADS_LOGIN_CUSTOMER_ID` unset in Vercel. The API will use direct access instead.
+> **No MCC?** If you have direct access to the client's account, leave `GOOGLE_ADS_LOGIN_CUSTOMER_ID` unset. The API uses direct access instead.
 
 ---
 
-### Step 6 — (Optional) Metricool Setup
+### Step 4 — Connect Their Metricool (Optional)
 
-1. Set `metricoolBlogId` in the client's CRM company record
-2. Ensure `METRICOOL_USER_ID` and `METRICOOL_API_TOKEN` env vars are set in Vercel
+**4a — Find their Metricool Blog ID:**
+
+1. Log into [metricool.com](https://metricool.com) — either using client credentials or your agency account if you manage their social
+2. Go to **Settings → Account**
+3. Copy the **Blog ID** — it's a number
+4. Enter it as `metricoolBlogId` in their Assembly company record
+
+**4b — Confirm Vercel env vars are set:**
+
+`METRICOOL_USER_ID` and `METRICOOL_API_TOKEN` must be set in Vercel. These are your agency-level credentials — one pair covers all clients. The API token is only available on paid Metricool plans.
+
+---
+
+### Step 5 — Enter All IDs in the Assembly Company Record
+
+Open the client's company record in Assembly CRM and fill in these custom fields:
+
+| Field | Value | Required |
+|---|---|---|
+| `ga4PropertyId` | Their GA4 Property ID — numbers only | Yes |
+| `adsCustomerId` | Their Google Ads customer ID — no dashes | Optional |
+| `metricoolBlogId` | Their Metricool blog/profile ID | Optional |
+
+> Assembly stores field keys in all-lowercase internally. The app handles this automatically — just enter the values correctly.
+
+> **⛔ Do not touch `dashboardpreferences`:** This field is written and read automatically by the app. It stores each client's personal UI preferences — their chosen theme, date range, hero metrics, and map country. Manually editing or deleting this value will corrupt their saved settings and may cause the dashboard to error. Leave it alone.
+
+---
+
+### Step 6 — Set Up Call Tracking (Optional)
+
+Call tracking appears automatically in the dashboard if the client has Google Tag Manager installed with the right events firing. No configuration is needed on the dashboard side.
+
+**To enable it on the client's site:**
+1. Open their Google Tag Manager container
+2. Create a **Trigger** → Click trigger → filter on Click URL matching `tel:`
+3. Create a **Tag** → GA4 Event tag → event name: `phone_call` → fire on the trigger above
+4. Publish the GTM container
+
+The dashboard looks for any of these event names: `phone_call`, `call_click`, `click_to_call`, `outbound_call`, `call`. Once any of these are firing in GA4, the Call Tracking section lights up automatically. If none are detected, the section shows a setup tip — it does not break anything else.
+
+---
+
+### Step 7 — Verify the Dashboard
+
+1. Open the client's portal link from their Assembly record
+2. Confirm the GA4 section loads with real data
+3. Check Google Ads and Metricool sections if configured
+4. Any sections not yet connected show a clear "not connected" message with next steps — no technical jargon is exposed to the client
+
+---
+
+## CRM Custom Fields Reference
+
+| Field | Type | Managed by | Notes |
+|---|---|---|---|
+| `ga4PropertyId` | Text | Operator | Required for GA4 section to work |
+| `adsCustomerId` | Text | Operator | Required for Google Ads section |
+| `metricoolBlogId` | Text | Operator | Required for Metricool section |
+| `dashboardpreferences` | Text | App only — do not edit | Stores client UI preferences as JSON. Never edit manually. |
 
 ---
 
@@ -122,7 +173,7 @@ yarn install
 
 ### Set up local environment
 
-Create a `.env.local` file:
+Create `.env.local`:
 
 ```
 COPILOT_API_KEY="your_api_key"
@@ -130,31 +181,31 @@ COPILOT_ENV=local
 DEV_COMPANY_ID=the_assembly_company_id_to_test_with
 ```
 
-The `DEV_COMPANY_ID` is the Assembly company ID you want to load locally — find it in the URL when you open a company record in Assembly (e.g. `https://app.copilot.app/companies/abc-123` → use `abc-123`).
+Find `DEV_COMPANY_ID` in the URL of a company record in Assembly — e.g. `https://app.copilot.app/companies/abc-123` → use `abc-123`.
 
-Create a `.env.personal` file for ngrok tunneling:
+Create `.env.personal` for ngrok:
 
 ```
 NGROK_AUTH_TOKEN="your_ngrok_token"
 ```
 
-Get a free ngrok token at [dashboard.ngrok.com](https://dashboard.ngrok.com/get-started/your-authtoken).
+Get a free token at [dashboard.ngrok.com](https://dashboard.ngrok.com/get-started/your-authtoken).
 
-### Run locally with Copilot embedded
+### Run locally
 
 ```bash
 yarn dev:embedded
 ```
 
-This opens the Copilot dashboard with your app embedded via ngrok. The first time, click **"Visit Site"** when prompted by ngrok.
+Opens Assembly with your app embedded via ngrok. Click **"Visit Site"** the first time ngrok prompts.
 
 ---
 
 ## Content Security Policy
 
-The CSP is configured in `src/middleware.ts`. The `frame-ancestors` directive includes `https://dashboard.copilot.app` and `https://*.copilot.app` by default.
+Configured in `src/middleware.ts`. The `frame-ancestors` directive allows embedding in Assembly by default.
 
-If you use a custom domain for your portal, add it:
+To add a custom client portal domain:
 
 ```
 frame-ancestors https://dashboard.copilot.app https://*.copilot.app https://portal.yourcompany.com;
@@ -162,17 +213,58 @@ frame-ancestors https://dashboard.copilot.app https://*.copilot.app https://port
 
 ---
 
+## FAQ
+
+**Why is GA4 showing a permissions error even though the property ID is correct?**
+The service account hasn't been added to the GA4 property, or it was added at the Account level instead of the Property level. The client needs to add `wordpress-portal-v2@client-portal-au-site.iam.gserviceaccount.com` as a Viewer under GA4 → Admin → Property Access Management — at the Property level specifically.
+
+**Why is Google Ads showing "manager account access required"?**
+Art Unlimited's MCC account doesn't yet have permission to access the client's Google Ads account. Follow Step 3b — either send a manager access request from the MCC account, or have the client link it directly. The customer ID being in the CRM is not enough on its own.
+
+**Can I set up Google Ads without a Manager (MCC) account?**
+Yes. If you have direct access to the client's account (they added you as a user), leave `GOOGLE_ADS_LOGIN_CUSTOMER_ID` unset in Vercel. This works for individual clients but doesn't scale — an MCC is recommended for agencies managing multiple accounts.
+
+**Why is the client's saved theme or date range not persisting?**
+The `dashboardpreferences` custom field probably doesn't exist in Assembly workspace settings. Go to Settings → Custom fields and create a Text field named `dashboardpreferences`. Without this, Assembly silently discards the save.
+
+**Can I change a client's preferences by editing the `dashboardpreferences` field?**
+No. This field is managed entirely by the app and contains a JSON blob. Editing it manually risks corrupting the value and may cause the dashboard to break or reset for that client. If a client wants to reset their preferences, have them use the dashboard controls directly.
+
+**A client updated their GA4 property — how do I update the dashboard?**
+Just update `ga4PropertyId` in their Assembly company record. The change takes effect on the next page load with no redeploy needed.
+
+**The Metricool section always shows "not connected" even with the blog ID set.**
+Check that `METRICOOL_USER_ID` and `METRICOOL_API_TOKEN` are both set in Vercel. Also confirm you have a paid Metricool plan — the API is not available on free accounts.
+
+**Why does the map show nothing?**
+The map fetches boundary data through internal API routes at `/api/geo/world` and `/api/geo/us`. If these routes are missing, create them at `src/app/api/geo/world/route.ts` and `src/app/api/geo/us/route.ts`. If they exist and it's still blank, check Vercel function logs for errors.
+
+**Call tracking isn't showing up even though the client has a phone number on their site.**
+Having a phone number on the site is not enough — GTM must be installed and configured to fire a GA4 event when the number is clicked. Follow Step 6 to set this up, or pass it to their developer.
+
+**The dashboard says "Access required" when I try to open it directly.**
+This is expected. The dashboard can only be opened through the client's Assembly portal link. Accessing the raw Vercel URL directly will always show this screen — it's a security feature, not a bug.
+
+**I updated a CRM field but the old value is still showing.**
+The app fetches fresh data on every request using `cache: 'no-store'`. If you're seeing stale data, try a hard refresh (`Cmd+Shift+R` on Mac, `Ctrl+Shift+R` on Windows). If still stale, verify `cache: 'no-store'` is present on the Assembly fetch in `utils/session.ts`.
+
+---
+
 ## Troubleshooting
 
 | Error | Cause | Fix |
 |---|---|---|
-| GA4 `UNAUTHENTICATED` | Private key is malformed in Vercel | Re-paste `GA4_PRIVATE_KEY` as a single line with literal `\n` — no surrounding quotes, no real line breaks |
-| GA4 `PERMISSION_DENIED` | Service account not added to client's GA4 property | Client must add the service account email as Viewer in their GA4 Property Access Management |
-| GA4 `PERMISSION_DENIED` | Wrong Property ID in CRM | Double-check `ga4PropertyId` in the company record matches the GA4 Property ID exactly |
-| Google Ads `403` | `adsCustomerId` not set in CRM | Add the client's 10-digit customer ID (no dashes) to their Assembly company record |
-| Google Ads `"doesn't have permission"` | Manager account not linked to client account | Follow Step 5b above — client must approve manager access request |
-| Google Ads `500` | Missing env vars | Check all `GOOGLE_ADS_*` variables are set in Vercel and redeploy |
-| Metricool `403` | `metricoolBlogId` not set in CRM | Add the client's Metricool blog ID to their Assembly company record |
-| Copilot `401 Unauthorized` | API key belongs to wrong workspace | Regenerate `COPILOT_API_KEY` from the correct Copilot workspace |
-| `Session Token is required` | App accessed via raw Vercel URL | Normal — app must be accessed through `*.copilot.app`, not directly |
-| Stale CRM data / old values loading | Next.js caching the Assembly API response | Ensure `cache: 'no-store'` is set on the fetch in `utils/session.ts` |
+| GA4 `UNAUTHENTICATED` | Private key malformed in Vercel | Re-paste `GA4_PRIVATE_KEY` as one line with literal `\n` — no extra quotes, no real line breaks |
+| GA4 `PERMISSION_DENIED` | Service account not on GA4 property | Client adds service account email as Viewer at Property level in GA4 Access Management |
+| GA4 `PERMISSION_DENIED` | Wrong Property ID | Match `ga4PropertyId` exactly to the number in GA4 → Admin → Property Settings |
+| Google Ads `403` | `adsCustomerId` missing in CRM | Add 10-digit customer ID (no dashes) to Assembly company record |
+| Google Ads `"doesn't have permission"` | MCC not linked | Client approves manager access request — see Step 3b |
+| Google Ads `500` | Missing Vercel env vars | Confirm all `GOOGLE_ADS_*` variables are set in Vercel and redeploy |
+| Metricool `403` | `metricoolBlogId` missing | Add blog ID to Assembly company record |
+| Metricool `403` | Missing Vercel credentials | Set `METRICOOL_USER_ID` and `METRICOOL_API_TOKEN` in Vercel |
+| Metricool `403` | Free Metricool plan | API access requires a paid plan |
+| Preferences not saving | `dashboardpreferences` field missing | Create a Text field named `dashboardpreferences` in Assembly → Settings → Custom fields |
+| Map not loading | Geo API routes missing | Create `src/app/api/geo/world/route.ts` and `src/app/api/geo/us/route.ts` |
+| `Session Token is required` | App opened via direct URL | Normal — must be opened through Assembly portal link |
+| Stale CRM data | Caching issue | Verify `cache: 'no-store'` is set on the Assembly fetch in `utils/session.ts` |
+| Assembly `401` on save | Expired or wrong `COPILOT_API_KEY` | Regenerate key in Assembly dashboard and update in Vercel |
