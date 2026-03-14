@@ -26,7 +26,7 @@ const WorldHeatmap = dynamic(
   { ssr: false, loading: () => <p style={{ fontSize: 13, padding: 20, textAlign: 'center', opacity: 0.5 }}>Loading map…</p> }
 );
 
-const USE_MOCK = false;
+const USE_MOCK = true;
 export type Theme = 'light' | 'dark' | 'forest';
 
 function fmt(n: number): string {
@@ -713,11 +713,6 @@ export function GA4Dashboard() {
           </div>
 
           <div className="flex items-center gap-1.5 flex-wrap">
-            {saveStatus !== 'idle' && (
-              <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 8, background: saveStatus === 'saved' ? `${raw.ring1}18` : '#fef2f2', color: saveStatus === 'saved' ? raw.ring1 : '#ef4444' }}>
-                {saveStatus === 'saved' ? '✓ Saved' : '⚠ Save failed'}
-              </span>
-            )}
             <div className="flex gap-1 flex-wrap">
               {PRESET_RANGES.map((r, i) => (
                 <button key={i} onClick={() => { setSelectedPreset(i); setShowDatePicker(false); savePreferences({ theme, heroMetrics, mapCountry, compareMode, selectedPreset: i }); }}
@@ -760,6 +755,11 @@ export function GA4Dashboard() {
                 </button>
               ))}
             </div>
+            {saveStatus !== 'idle' && (
+              <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 8, background: saveStatus === 'saved' ? `${raw.ring1}18` : '#fef2f2', color: saveStatus === 'saved' ? raw.ring1 : '#ef4444' }}>
+                {saveStatus === 'saved' ? '✓ Saved' : '⚠ Save failed'}
+              </span>
+            )}
           </div>
         </div>
       </header>

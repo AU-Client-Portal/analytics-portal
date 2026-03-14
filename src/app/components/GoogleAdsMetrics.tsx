@@ -6,7 +6,7 @@ import { MousePointerClick, Eye, TrendingUp, DollarSign, Target, Award, Percent,
 import { MOCK_GOOGLE_ADS } from './mockData';
 import type { Theme } from './GA4Dashboard';
 
-const USE_MOCK = false;
+const USE_MOCK = true;
 
 interface GoogleAdsData {
   companyId: string; companyName: string; customerId: string;
