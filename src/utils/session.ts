@@ -102,6 +102,8 @@ export function getCompanyConfig(session: Awaited<ReturnType<typeof getSession>>
 
   const fields = (session.company as any).customFields ?? {};
 
+  console.log('Custom fields received:', JSON.stringify(fields));
+
   return {
     companyId: session.company.id,
     name: (session.company as any).name ?? 'Unknown Company',
