@@ -274,7 +274,7 @@ export function GoogleAdsMetrics({ dateRange, theme, themeStyles: t }: Props) {
         }
         const token = searchParams.get('token');
         const res = await fetch(`/api/google-ads/metrics?token=${token}&startDate=${dateRange.start}&endDate=${dateRange.end}`);
-        if (!res.ok) { const e = await res.json(); throw new Error(e.error || 'Failed'); }
+        if (!res.ok) { const e = await res.json(); throw new Error(e.details || e.error || 'Failed'); }
         setData(await res.json());
       } catch (err: any) { setError(err.message); }
       finally { setLoading(false); }
