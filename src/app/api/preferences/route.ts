@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify({
         customFields: {
           ...((company.customFields as object) ?? {}),
-          dashboardPreferences: JSON.stringify(body),
+          dashboardpreferences: JSON.stringify(body),
         },
       }),
     });
