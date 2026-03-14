@@ -91,7 +91,7 @@ function ErrorContent({ type, message }: { type: ErrorType; message: string }) {
           <PlugIcon />
           <p className="text-[#2c1a0e] font-bold text-lg mb-2 mt-3">GA4 not connected</p>
           <p className="text-[#7a5c3a] text-sm mb-4">
-            A GA4 Property ID hasn't been added for this account. To fix this:
+            A GA4 Property ID hasn&apos;t been added for this account. To fix this:
           </p>
           <Step number={1}>Open this client's company record in Assembly CRM</Step>
           <Step number={2}>Add the custom field <Code>ga4PropertyId</Code> with their Google Analytics Property ID (numbers only)</Step>
@@ -105,7 +105,7 @@ function ErrorContent({ type, message }: { type: ErrorType; message: string }) {
           <PlugIcon />
           <p className="text-[#2c1a0e] font-bold text-lg mb-2 mt-3">Google Ads not connected</p>
           <p className="text-[#7a5c3a] text-sm mb-4">
-            A Google Ads customer ID hasn't been added for this account. To fix this:
+            A Google Ads customer ID hasn&apos;t been added for this account. To fix this:
           </p>
           <Step number={1}>Open this client's company record in Assembly CRM</Step>
           <Step number={2}>Add the custom field <Code>adsCustomerId</Code> with their 10-digit Google Ads ID — no dashes</Step>
@@ -119,7 +119,7 @@ function ErrorContent({ type, message }: { type: ErrorType; message: string }) {
           <PlugIcon />
           <p className="text-[#2c1a0e] font-bold text-lg mb-2 mt-3">Metricool not connected</p>
           <p className="text-[#7a5c3a] text-sm mb-4">
-            A Metricool Blog ID hasn't been added for this account. To fix this:
+            A Metricool Blog ID hasn&apos;t been added for this account. To fix this:
           </p>
           <Step number={1}>Open this client's company record in Assembly CRM</Step>
           <Step number={2}>Add the custom field <Code>metricoolBlogId</Code> with their Metricool profile/blog ID</Step>
@@ -132,7 +132,7 @@ function ErrorContent({ type, message }: { type: ErrorType; message: string }) {
           <PlugIcon />
           <p className="text-[#2c1a0e] font-bold text-lg mb-2 mt-3">GA4 access not granted</p>
           <p className="text-[#7a5c3a] text-sm mb-4">
-            The service account doesn't have permission to access this GA4 property. The client needs to grant access:
+            The service account doesn&apos;t have permission to access this GA4 property. The client needs to grant access:
           </p>
           <Step number={1}>Client goes to <Code>analytics.google.com</Code> → Admin → Property Access Management</Step>
           <Step number={2}>Click <Code>+</Code> → Add users</Step>
@@ -147,7 +147,7 @@ function ErrorContent({ type, message }: { type: ErrorType; message: string }) {
           <PlugIcon />
           <p className="text-[#2c1a0e] font-bold text-lg mb-2 mt-3">Google Ads access not granted</p>
           <p className="text-[#7a5c3a] text-sm mb-4">
-            The Art Unlimited manager account doesn't have permission to access this client's Google Ads. To fix this:
+            The Art Unlimited manager account doesn&apos;t have permission to access this client&apos;s Google Ads. To fix this:
           </p>
           <Step number={1}>Log into the Art Unlimited Google Ads Manager account</Step>
           <Step number={2}>Go to Accounts → Sub-accounts → click <Code>+</Code> → Request access to existing account</Step>
