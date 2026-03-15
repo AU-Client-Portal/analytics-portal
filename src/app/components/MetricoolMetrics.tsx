@@ -6,7 +6,7 @@ import { Users, FileText, Heart, Radio, ThumbsUp, MessageCircle, Instagram, Link
 import { MOCK_METRICOOL } from './mockData';
 import type { Theme } from './GA4Dashboard';
 
-const USE_MOCK = true;
+const USE_MOCK = false;
 
 interface MetricoolData {
   companyId: string; companyName: string; blogId: string;
