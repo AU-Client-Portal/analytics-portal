@@ -26,7 +26,7 @@ const WorldHeatmap = dynamic(
   { ssr: false, loading: () => <p style={{ fontSize: 13, padding: 20, textAlign: 'center', opacity: 0.5 }}>Loading map…</p> }
 );
 
-const USE_MOCK = false;
+const USE_MOCK = true;
 export type Theme = 'light' | 'dark' | 'forest';
 
 function fmt(n: number): string {
