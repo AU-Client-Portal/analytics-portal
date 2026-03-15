@@ -533,9 +533,11 @@ export function GA4Dashboard() {
     saveTimer.current = setTimeout(async () => {
       setSavingPrefs(true); setSaveStatus('idle');
       try {
+        const existing = await fetch(`/api/preferences?token=${token}`)
+          .then(r => r.json()).then(d => d.preferences || {}).catch(() => ({}));
         const res = await fetch(`/api/preferences?token=${token}`, {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(prefs),
+          body: JSON.stringify({ ...existing, ...prefs }),
         });
         const body = await res.json();
         if (!res.ok) throw new Error(body.error || 'Save failed');
