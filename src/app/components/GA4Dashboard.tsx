@@ -3,8 +3,9 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import {
+  AreaChart, Area,
   LineChart, Line,
-  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts';
 import {
   Users, Activity, Eye, UserPlus, Clock, TrendingDown,
@@ -37,6 +38,28 @@ function fmt(n: number): string {
 
 function toISODate(d: Date) {
   return d.toISOString().split('T')[0];
+}
+
+function resolveDate(s: string): Date {
+  const d = new Date();
+  if (s === 'today') return d;
+  if (s === 'yesterday') { d.setDate(d.getDate() - 1); return d; }
+  const m = s.match(/^(\d+)daysAgo$/);
+  if (m) { d.setDate(d.getDate() - parseInt(m[1])); return d; }
+  return new Date(s);
+}
+
+function filterBySeries<T extends { date: string }>(ts: T[], start: string, end: string): T[] {
+  if (!start || !end || !ts.length) return ts;
+  const s = resolveDate(start); s.setHours(0, 0, 0, 0);
+  const e = resolveDate(end);   e.setHours(23, 59, 59, 999);
+  return ts.filter(row => {
+    const r = row.date;
+    const parsed = r.length === 8
+      ? new Date(+r.slice(0, 4), +r.slice(4, 6) - 1, +r.slice(6, 8))
+      : new Date(r);
+    return parsed >= s && parsed <= e;
+  });
 }
 
 function DesktopIcon({ color }: { color: string }) {
@@ -81,7 +104,6 @@ const ALL_HERO_METRICS = [
 ] as const;
 type HeroMetricId = typeof ALL_HERO_METRICS[number]['id'];
 const DEFAULT_HERO: [HeroMetricId, HeroMetricId, HeroMetricId] = ['engagementRate', 'activeUsers', 'bounceRate'];
-const INVERSE_METRICS: Set<HeroMetricId> = new Set(['bounceRate']);
 
 interface DashboardPreferences {
   theme: Theme;
@@ -171,11 +193,11 @@ const PRESET_RANGES = [
 ];
 
 const COMPARE_OPTIONS = [
-  { label: 'No comparison',    value: 'none'      },
-  { label: 'Previous period',  value: 'previous'  },
-  { label: 'Previous week',    value: 'week'      },
-  { label: 'Previous month',   value: 'month'     },
-  { label: 'Previous year',    value: 'year'      },
+  { label: 'No comparison',   value: 'none'     },
+  { label: 'Previous period', value: 'previous' },
+  { label: 'Previous week',   value: 'week'     },
+  { label: 'Previous month',  value: 'month'    },
+  { label: 'Previous year',   value: 'year'     },
 ];
 
 interface GA4Metrics {
@@ -188,13 +210,32 @@ interface GA4Data {
   previousDateRange?: { startDate: string; endDate: string };
   metrics: GA4Metrics;
   previousMetrics?: GA4Metrics | null;
-  timeSeries: Array<{ date: string; activeUsers: number; sessions: number; pageViews: number }>;
+  timeSeries: Array<{ date: string; activeUsers: number; sessions: number; pageViews: number; bounceRate?: number; engagementRate?: number; newUsers?: number; avgSessionDuration?: number }>;
   topPages: Array<{ title: string; path: string; views: number }>;
   trafficSources: Array<{ source: string; sessions: number }>;
   devices: Array<{ device: string; users: number }>;
   countries: Array<{ country: string; users: number }>;
   regions?: Array<{ country: string; region: string; users: number }>;
   callEvents?: Array<{ event: string; count: number }>;
+}
+
+function Spark({ data, color, uid }: { data: number[]; color: string; uid: string }) {
+  if (!data || data.length < 2) return null;
+  const d = data.map(v => ({ v }));
+  const gid = `ga4spk-${uid.replace(/[^a-z0-9]/gi, '').toLowerCase()}`;
+  return (
+    <ResponsiveContainer width="100%" height="100%">
+      <AreaChart data={d} margin={{ top: 2, right: 0, left: 0, bottom: 0 }}>
+        <defs>
+          <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%"   stopColor={color} stopOpacity={0.28} />
+            <stop offset="100%" stopColor={color} stopOpacity={0}    />
+          </linearGradient>
+        </defs>
+        <Area type="monotone" dataKey="v" stroke={color} strokeWidth={1.5} fill={`url(#${gid})`} dot={false} isAnimationActive={false} />
+      </AreaChart>
+    </ResponsiveContainer>
+  );
 }
 
 function ShineCard({ children, className = '', style, shineColor, onClick }: {
@@ -208,11 +249,7 @@ function ShineCard({ children, className = '', style, shineColor, onClick }: {
       onMouseMove={e => { const r = e.currentTarget.getBoundingClientRect(); setPos({ x: ((e.clientX - r.left) / r.width) * 100, y: ((e.clientY - r.top) / r.height) * 100 }); }}
       onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)} onClick={onClick}>
       {children}
-      <div style={{
-        position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 10, borderRadius: 'inherit',
-        background: `radial-gradient(circle at ${pos.x}% ${pos.y}%, ${shineColor}, transparent 65%)`,
-        opacity: hovered ? 1 : 0, transition: 'opacity 0.25s ease',
-      }} />
+      <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 10, borderRadius: 'inherit', background: `radial-gradient(circle at ${pos.x}% ${pos.y}%, ${shineColor}, transparent 65%)`, opacity: hovered ? 1 : 0, transition: 'opacity 0.25s ease' }} />
     </div>
   );
 }
@@ -273,24 +310,32 @@ function useCountUp(target: number, duration = 1000) {
   return value;
 }
 
-function MetricCard({ title, value, suffix = '', icon, index, tw, raw, previousValue, inverse = false }: {
+function MetricCard({ title, value, suffix = '', icon, index, tw, raw, previousValue, inverse = false, sparkData, sparkColor }: {
   title: string; value: number; suffix?: string; icon: React.ReactNode;
   index: number; tw: typeof THEME_TW[Theme]; raw: typeof THEME_RAW[Theme];
   previousValue?: number; inverse?: boolean;
+  sparkData?: number[]; sparkColor?: string;
 }) {
   const [visible, setVisible] = useState(false);
   const count = useCountUp(value);
   useEffect(() => { const t = setTimeout(() => setVisible(true), index * 75); return () => clearTimeout(t); }, [index]);
+  const uid   = `${title.replace(/\s+/g, '').toLowerCase()}-${index}`;
+  const color = sparkColor || raw.ring1;
+  const hasSpark = sparkData && sparkData.length > 1;
+
   return (
     <ShineCard shineColor={raw.shineColor}
-      className={`${tw.card} border ${tw.border} rounded-2xl p-3 md:p-5 cursor-default group`}
+      className={`${tw.card} border ${tw.border} rounded-2xl cursor-default group overflow-hidden`}
       style={{ opacity: visible ? 1 : 0, transform: visible ? 'translateY(0)' : 'translateY(14px)', transition: 'opacity 0.4s ease, transform 0.3s ease, box-shadow 0.3s ease' }}
     >
-      <div onMouseEnter={e => { const p = e.currentTarget.parentElement as HTMLDivElement; p.style.transform = 'translateY(-2px)'; p.style.boxShadow = '0 8px 24px rgba(0,0,0,0.1)'; }}
-        onMouseLeave={e => { const p = e.currentTarget.parentElement as HTMLDivElement; p.style.transform = 'translateY(0)'; p.style.boxShadow = 'none'; }}>
+      <div
+        onMouseEnter={e => { const p = e.currentTarget.parentElement as HTMLDivElement; p.style.transform = 'translateY(-2px)'; p.style.boxShadow = '0 8px 24px rgba(0,0,0,0.1)'; }}
+        onMouseLeave={e => { const p = e.currentTarget.parentElement as HTMLDivElement; p.style.transform = 'translateY(0)'; p.style.boxShadow = 'none'; }}
+        style={{ padding: '12px 14px 8px', position: 'relative', zIndex: 1 }}
+      >
         <div className="flex items-start justify-between mb-1.5">
           <div className={`${tw.subtext} text-xs font-semibold uppercase tracking-widest leading-tight`} style={{ fontSize: 10 }}>{title}</div>
-          <div className={`${tw.accentText} opacity-50 group-hover:opacity-100 transition-opacity shrink-0 ml-1`}>{icon}</div>
+          <div style={{ color, opacity: 0.5 }} className="group-hover:opacity-100 transition-opacity shrink-0 ml-1">{icon}</div>
         </div>
         <div className={`${tw.text} font-bold tracking-tight`} style={{ fontSize: 'clamp(0.95rem, 4vw, 1.6rem)', wordBreak: 'break-all' }}>
           {fmt(count)}{suffix}
@@ -302,7 +347,109 @@ function MetricCard({ title, value, suffix = '', icon, index, tw, raw, previousV
           </div>
         )}
       </div>
+      {hasSpark && (
+        <div style={{ height: 40, position: 'relative', zIndex: 1 }}>
+          <Spark data={sparkData!} color={color} uid={uid} />
+        </div>
+      )}
     </ShineCard>
+  );
+}
+
+function CustomizeModal({ selected, onChange, onClose, tw, raw }: {
+  selected: [HeroMetricId, HeroMetricId, HeroMetricId];
+  onChange: (m: [HeroMetricId, HeroMetricId, HeroMetricId]) => void;
+  onClose: () => void;
+  tw: typeof THEME_TW[Theme];
+  raw: typeof THEME_RAW[Theme];
+}) {
+  const [draft, setDraft]     = useState<[HeroMetricId, HeroMetricId, HeroMetricId]>([...selected]);
+  const [activeSlot, setSlot] = useState<0 | 1 | 2>(0);
+  const slotColors            = [raw.ring1, raw.ring2, raw.ring3];
+  const slotLabels            = ['Slot 1', 'Slot 2', 'Slot 3'];
+
+  function pickMetric(id: HeroMetricId) {
+    const next: [HeroMetricId, HeroMetricId, HeroMetricId] = [...draft];
+    const existingSlot = next.indexOf(id) as -1 | 0 | 1 | 2;
+    if (existingSlot !== -1 && existingSlot !== activeSlot) next[existingSlot] = next[activeSlot];
+    next[activeSlot] = id;
+    setDraft(next);
+    setSlot(s => (s < 2 ? (s + 1) as 0 | 1 | 2 : s));
+  }
+
+  return (
+    <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+      <div className={`${tw.card} border ${tw.border} rounded-2xl shadow-2xl w-full max-w-sm`}
+        style={{ animation: 'modalIn 0.22s cubic-bezier(0.34,1.56,0.64,1)', maxHeight: '90vh', overflowY: 'auto' }}
+        onClick={e => e.stopPropagation()}>
+
+        <div className="flex items-center justify-between p-5 pb-4">
+          <div>
+            <h3 className={`${tw.text} font-bold`} style={{ fontSize: 15 }}>Customize Hero Metrics</h3>
+            <p className={`${tw.subtext}`} style={{ fontSize: 12, marginTop: 2 }}>Select a slot, then choose its metric</p>
+          </div>
+          <button onClick={onClose} className={`${tw.pillInactive} p-1.5 rounded-lg`}><X size={15} /></button>
+        </div>
+
+        <div style={{ padding: '0 20px 16px', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+          {([0, 1, 2] as const).map(s => {
+            const color    = slotColors[s];
+            const metric   = ALL_HERO_METRICS.find(m => m.id === draft[s])!;
+            const isActive = activeSlot === s;
+            return (
+              <button key={s} onClick={() => setSlot(s)}
+                style={{ padding: '10px 8px', borderRadius: 10, border: `2px solid ${isActive ? color : raw.border}`, background: isActive ? `${color}12` : 'transparent', cursor: 'pointer', textAlign: 'center', transition: 'all 0.15s', outline: 'none' }}>
+                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: isActive ? color : raw.subtext, marginBottom: 5 }}>{slotLabels[s]}</div>
+                <div style={{ width: 20, height: 3, borderRadius: 2, background: color, margin: '0 auto 6px', opacity: isActive ? 1 : 0.4 }} />
+                <div style={{ fontSize: 11, fontWeight: 700, color: isActive ? color : raw.text, lineHeight: 1.2 }}>{metric.label}</div>
+                <div style={{ fontSize: 10, color: raw.subtext, marginTop: 2 }}>{metric.sub}</div>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className={`border-t ${tw.border}`} style={{ margin: '0 20px' }} />
+
+        <div style={{ padding: '12px 20px 8px' }}>
+          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: raw.subtext, marginBottom: 10 }}>
+            Assign to {slotLabels[activeSlot]}
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {ALL_HERO_METRICS.map(metric => {
+              const assignedSlot  = draft.indexOf(metric.id as HeroMetricId) as -1 | 0 | 1 | 2;
+              const isCurrentSlot = assignedSlot === activeSlot;
+              const isOtherSlot   = assignedSlot !== -1 && assignedSlot !== activeSlot;
+              const slotColor     = assignedSlot !== -1 ? slotColors[assignedSlot] : undefined;
+              return (
+                <button key={metric.id} onClick={() => pickMetric(metric.id as HeroMetricId)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', borderRadius: 9, border: `1.5px solid ${isCurrentSlot ? slotColors[activeSlot] : 'transparent'}`, background: isCurrentSlot ? `${slotColors[activeSlot]}12` : 'transparent', cursor: 'pointer', textAlign: 'left', outline: 'none', transition: 'all 0.12s' }}
+                  onMouseEnter={e => { if (!isCurrentSlot) (e.currentTarget as HTMLButtonElement).style.background = `${raw.border}60`; }}
+                  onMouseLeave={e => { if (!isCurrentSlot) (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; }}>
+                  <div style={{ width: 22, height: 22, borderRadius: 6, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: isCurrentSlot ? slotColors[activeSlot] : isOtherSlot ? `${slotColor}20` : raw.track, border: `1.5px solid ${isCurrentSlot ? slotColors[activeSlot] : isOtherSlot ? slotColor! : raw.border}`, transition: 'all 0.12s' }}>
+                    {isCurrentSlot ? <Check size={12} color="white" strokeWidth={3} /> : isOtherSlot ? <span style={{ fontSize: 8, fontWeight: 800, color: slotColor }}>{assignedSlot + 1}</span> : null}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: raw.text }}>{metric.label}</div>
+                    <div style={{ fontSize: 11, color: raw.subtext }}>{metric.sub}</div>
+                  </div>
+                  {isOtherSlot && (
+                    <span style={{ fontSize: 9, fontWeight: 700, color: slotColor, background: `${slotColor}18`, padding: '2px 6px', borderRadius: 4, flexShrink: 0 }}>
+                      in slot {assignedSlot + 1}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className={`border-t ${tw.border}`} style={{ padding: '14px 20px', display: 'flex', gap: 8, marginTop: 8 }}>
+          <button onClick={onClose} style={{ flex: 1, padding: '8px', borderRadius: 9, border: `1px solid ${raw.border}`, background: 'transparent', color: raw.subtext, fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>Cancel</button>
+          <button onClick={() => { onChange(draft); onClose(); }} className={tw.pillActive} style={{ flex: 2, padding: '8px', borderRadius: 9, border: 'none', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Apply</button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -312,9 +459,7 @@ const CustomTooltip = ({ active, payload, label, raw }: any) => {
     <div style={{ background: raw.card, border: `1px solid ${raw.border}`, borderRadius: 10, padding: '10px 14px', boxShadow: '0 4px 20px rgba(0,0,0,0.15)' }}>
       <p style={{ color: raw.subtext, fontSize: 11, marginBottom: 6, fontWeight: 600 }}>{label}</p>
       {payload.map((p: any, i: number) => (
-        <p key={i} style={{ color: p.color, fontSize: 12, fontWeight: 700, margin: '2px 0' }}>
-          {p.name}: {p.value?.toLocaleString()}
-        </p>
+        <p key={i} style={{ color: p.color, fontSize: 12, fontWeight: 700, margin: '2px 0' }}>{p.name}: {p.value?.toLocaleString()}</p>
       ))}
     </div>
   );
@@ -323,41 +468,25 @@ const CustomTooltip = ({ active, payload, label, raw }: any) => {
 function DateRangePicker({ startDate, endDate, compareMode, onApply, tw, raw, onClose }: {
   startDate: string; endDate: string; compareMode: string;
   onApply: (start: string, end: string, compare: string) => void;
-  tw: typeof THEME_TW[Theme]; raw: typeof THEME_RAW[Theme];
-  onClose: () => void;
+  tw: typeof THEME_TW[Theme]; raw: typeof THEME_RAW[Theme]; onClose: () => void;
 }) {
   const [s, setS] = useState(startDate || toISODate(new Date(Date.now() - 30 * 86400000)));
   const [e, setE] = useState(endDate || toISODate(new Date()));
   const [cmp, setCmp] = useState(compareMode || 'previous');
   const today = toISODate(new Date());
-  const inputStyle = {
-    background: raw.bg, border: `1px solid ${raw.border}`, borderRadius: 8,
-    padding: '7px 12px', color: raw.text, fontSize: 13, outline: 'none', width: '100%',
-    colorScheme: 'inherit',
-  } as React.CSSProperties;
-  const selectStyle = {
-    ...inputStyle, cursor: 'pointer',
-    appearance: 'none' as const, WebkitAppearance: 'none' as const,
-  };
+  const inputStyle = { background: raw.bg, border: `1px solid ${raw.border}`, borderRadius: 8, padding: '7px 12px', color: raw.text, fontSize: 13, outline: 'none', width: '100%', colorScheme: 'inherit' } as React.CSSProperties;
+  const selectStyle = { ...inputStyle, cursor: 'pointer', appearance: 'none' as const, WebkitAppearance: 'none' as const };
   return (
-    <div className={`${tw.card} border ${tw.border}`} style={{
-      position: 'fixed', bottom: 'auto', right: 16, top: 'auto', marginTop: 0,
-      borderRadius: 16, padding: 20, boxShadow: '0 16px 48px rgba(0,0,0,0.28)',
-      zIndex: 300, width: 'min(320px, calc(100vw - 32px))', left: 'auto',
-    }}>
+    <div className={`${tw.card} border ${tw.border}`} style={{ position: 'fixed', bottom: 'auto', right: 16, top: 'auto', marginTop: 0, borderRadius: 16, padding: 20, boxShadow: '0 16px 48px rgba(0,0,0,0.28)', zIndex: 300, width: 'min(320px, calc(100vw - 32px))', left: 'auto' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div style={{ width: 28, height: 28, borderRadius: 8, background: raw.ring1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Calendar size={14} color="white" />
-          </div>
+          <div style={{ width: 28, height: 28, borderRadius: 8, background: raw.ring1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Calendar size={14} color="white" /></div>
           <div>
             <p style={{ color: raw.text, fontSize: 13, fontWeight: 700, margin: 0 }}>Custom Range</p>
             <p style={{ color: raw.subtext, fontSize: 10, margin: 0 }}>Pick dates & compare</p>
           </div>
         </div>
-        <button onClick={onClose} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: raw.subtext, padding: 4 }}>
-          <X size={16} />
-        </button>
+        <button onClick={onClose} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: raw.subtext, padding: 4 }}><X size={16} /></button>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <div>
@@ -380,15 +509,9 @@ function DateRangePicker({ startDate, endDate, compareMode, onApply, tw, raw, on
         </div>
       </div>
       <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
-        <button onClick={onClose} style={{ flex: 1, padding: '8px', borderRadius: 10, border: `1px solid ${raw.border}`, background: 'transparent', color: raw.subtext, fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>
-          Cancel
-        </button>
-        <button
-          onClick={() => { if (s && e) { onApply(s, e, cmp); onClose(); } }}
-          disabled={!s || !e}
-          style={{ flex: 2, padding: '8px', borderRadius: 10, border: 'none', background: raw.ring1, color: 'white', fontSize: 12, fontWeight: 700, cursor: 'pointer', opacity: s && e ? 1 : 0.5 }}>
-          Apply Range
-        </button>
+        <button onClick={onClose} style={{ flex: 1, padding: '8px', borderRadius: 10, border: `1px solid ${raw.border}`, background: 'transparent', color: raw.subtext, fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>Cancel</button>
+        <button onClick={() => { if (s && e) { onApply(s, e, cmp); onClose(); } }} disabled={!s || !e}
+          style={{ flex: 2, padding: '8px', borderRadius: 10, border: 'none', background: raw.ring1, color: 'white', fontSize: 12, fontWeight: 700, cursor: 'pointer', opacity: s && e ? 1 : 0.5 }}>Apply Range</button>
       </div>
     </div>
   );
@@ -402,20 +525,9 @@ function PageRow({ page, i, pct, sharePct, color, visible, raw }: {
   const [hovered, setHovered] = useState(false);
   return (
     <div onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}
-      style={{
-        padding: '10px 24px', background: hovered ? `${raw.ring1}06` : 'transparent',
-        transition: 'background 0.15s', opacity: visible ? 1 : 0,
-        transform: visible ? 'translateX(0)' : 'translateX(-16px)', transitionDelay: `${i * 60}ms`,
-      }}>
+      style={{ padding: '10px 24px', background: hovered ? `${raw.ring1}06` : 'transparent', transition: 'background 0.15s', opacity: visible ? 1 : 0, transform: visible ? 'translateX(0)' : 'translateX(-16px)', transitionDelay: `${i * 60}ms` }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-        <div style={{
-          width: 28, height: 28, borderRadius: 8, flexShrink: 0,
-          background: `${color}18`, border: `1.5px solid ${color}30`,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          color, fontSize: 12, fontWeight: 800,
-          transform: hovered ? 'scale(1.1)' : 'scale(1)',
-          transition: 'transform 0.2s cubic-bezier(0.34,1.56,0.64,1)',
-        }}>
+        <div style={{ width: 28, height: 28, borderRadius: 8, flexShrink: 0, background: `${color}18`, border: `1.5px solid ${color}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', color, fontSize: 12, fontWeight: 800, transform: hovered ? 'scale(1.1)' : 'scale(1)', transition: 'transform 0.2s cubic-bezier(0.34,1.56,0.64,1)' }}>
           {i + 1}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -428,11 +540,7 @@ function PageRow({ page, i, pct, sharePct, color, visible, raw }: {
         </div>
       </div>
       <div style={{ marginTop: 8, height: 3, background: raw.track, borderRadius: 2, overflow: 'hidden' }}>
-        <div style={{
-          height: '100%', width: hovered ? `${pct}%` : `${pct * 0.85}%`,
-          background: `linear-gradient(90deg, ${color}, ${color}88)`,
-          borderRadius: 2, transition: 'width 0.5s cubic-bezier(0.4,0,0.2,1)',
-        }} />
+        <div style={{ height: '100%', width: hovered ? `${pct}%` : `${pct * 0.85}%`, background: `linear-gradient(90deg, ${color}, ${color}88)`, borderRadius: 2, transition: 'width 0.5s cubic-bezier(0.4,0,0.2,1)' }} />
       </div>
     </div>
   );
@@ -460,9 +568,9 @@ function TopPagesSection({ pages, tw, raw }: {
       </div>
       <div style={{ padding: '16px 0 8px' }}>
         {pages.map((page, i) => {
-          const pct = (page.views / max) * 100;
+          const pct      = (page.views / max) * 100;
           const sharePct = Math.round((page.views / total) * 100);
-          const color = rankColors[Math.min(i, rankColors.length - 1)];
+          const color    = rankColors[Math.min(i, rankColors.length - 1)];
           return <PageRow key={i} page={page} i={i} pct={pct} sharePct={sharePct} color={color} visible={visible} raw={raw} />;
         })}
       </div>
@@ -471,26 +579,25 @@ function TopPagesSection({ pages, tw, raw }: {
 }
 
 export function GA4Dashboard() {
-  const [data, setData] = useState<GA4Data | null>(null);
+  const [data, setData]       = useState<GA4Data | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError]     = useState<string | null>(null);
 
   const [selectedPreset, setSelectedPreset] = useState<number | null>(3);
-  const [customStart, setCustomStart] = useState('');
-  const [customEnd, setCustomEnd] = useState('');
-  const [compareMode, setCompareMode] = useState('previous');
+  const [customStart, setCustomStart]       = useState('');
+  const [customEnd, setCustomEnd]           = useState('');
+  const [compareMode, setCompareMode]       = useState('previous');
   const [showDatePicker, setShowDatePicker] = useState(false);
 
-  const [theme, setTheme] = useState<Theme>('light');
+  const [theme, setTheme]           = useState<Theme>('light');
   const [heroMetrics, setHeroMetrics] = useState<[HeroMetricId, HeroMetricId, HeroMetricId]>(DEFAULT_HERO);
   const [showPicker, setShowPicker] = useState(false);
   const [mapCountry, setMapCountry] = useState<string | null>(null);
-  const [savingPrefs, setSavingPrefs] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'error'>('idle');
 
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const saveTimer    = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchParams = useSearchParams();
-  const tw = THEME_TW[theme];
+  const tw  = THEME_TW[theme];
   const raw = THEME_RAW[theme];
   const token = searchParams.get('token') ?? '';
 
@@ -531,7 +638,6 @@ export function GA4Dashboard() {
     if (USE_MOCK || !token) return;
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(async () => {
-      setSavingPrefs(true); setSaveStatus('idle');
       try {
         const existing = await fetch(`/api/preferences?token=${token}`)
           .then(r => r.json()).then(d => d.preferences || {}).catch(() => ({}));
@@ -542,19 +648,14 @@ export function GA4Dashboard() {
         const body = await res.json();
         if (!res.ok) throw new Error(body.error || 'Save failed');
         setSaveStatus('saved');
-      } catch (e: any) {
-        console.error('Preferences save error:', e.message);
-        setSaveStatus('error');
-      } finally {
-        setSavingPrefs(false);
-        setTimeout(() => setSaveStatus('idle'), 3000);
-      }
+      } catch { setSaveStatus('error'); }
+      finally { setTimeout(() => setSaveStatus('idle'), 3000); }
     }, 800);
   }, [token]);
 
-  const changeTheme = (th: Theme) => { setTheme(th); savePreferences({ theme: th, heroMetrics, mapCountry, compareMode, selectedPreset }); };
+  const changeTheme       = (th: Theme) => { setTheme(th); savePreferences({ theme: th, heroMetrics, mapCountry, compareMode, selectedPreset }); };
   const changeHeroMetrics = (m: [HeroMetricId, HeroMetricId, HeroMetricId]) => { setHeroMetrics(m); savePreferences({ theme, heroMetrics: m, mapCountry, compareMode, selectedPreset }); };
-  const changeMapCountry = (c: string | null) => { setMapCountry(c); savePreferences({ theme, heroMetrics, mapCountry: c, compareMode, selectedPreset }); };
+  const changeMapCountry  = (c: string | null) => { setMapCountry(c); savePreferences({ theme, heroMetrics, mapCountry: c, compareMode, selectedPreset }); };
 
   useEffect(() => {
     async function fetchMetrics() {
@@ -596,9 +697,7 @@ export function GA4Dashboard() {
               </svg>
             </div>
             <p className={`${tw.text} font-bold text-lg mb-2`}>Access required</p>
-            <p className={`${tw.subtext} text-sm leading-relaxed`}>
-              This dashboard can only be accessed through your personalised portal link. Please contact your account manager if you need help getting in.
-            </p>
+            <p className={`${tw.subtext} text-sm leading-relaxed`}>This dashboard can only be accessed through your personalised portal link. Please contact your account manager.</p>
           </>
         ) : (
           <>
@@ -617,18 +716,36 @@ export function GA4Dashboard() {
     </div>
   );
 
-  const m = data.metrics;
+  const m    = data.metrics;
   const prev = data.previousMetrics;
-  const ts = data.timeSeries.map(d => ({ ...d, date: d.date?.length === 8 ? `${d.date.substring(4,6)}/${d.date.substring(6,8)}` : d.date }));
+
+  const filteredTs = filterBySeries(data.timeSeries, activeStart, activeEnd);
+
+  const ts = filteredTs.map(d => ({
+    ...d,
+    date: d.date?.length === 8 ? `${d.date.substring(4,6)}/${d.date.substring(6,8)}` : d.date,
+  }));
+
+  const ga4Spark = {
+    activeUsers:    filteredTs.map(d => d.activeUsers ?? 0),
+    sessions:       filteredTs.map(d => d.sessions ?? 0),
+    pageViews:      filteredTs.map(d => d.pageViews ?? 0),
+    newUsers:       filteredTs.map(d => d.newUsers ?? 0),
+    bounceRate:     filteredTs.map(d => d.bounceRate ?? 0),
+    engagementRate: filteredTs.map(d => d.engagementRate ?? 0),
+    avgSession:     filteredTs.map(d => d.avgSessionDuration ?? 0),
+  };
+
   const totalSrc = data.trafficSources.reduce((s, r) => s + r.sessions, 0);
-  const newPct = m.sessions > 0 ? Math.round((m.newUsers / m.sessions) * 100) : 0;
+  const newPct   = m.sessions > 0 ? Math.round((m.newUsers / m.sessions) * 100) : 0;
   const ringColors = [raw.ring1, raw.ring2, raw.ring3];
-  const heroSet = new Set(heroMetrics);
+  const heroSet  = new Set(heroMetrics);
   const prevLabel = data.previousDateRange ? `${data.previousDateRange.startDate} → ${data.previousDateRange.endDate}` : 'previous period';
+  const compareModeLabel = COMPARE_OPTIONS.find(o => o.value === compareMode)?.label ?? '';
 
   const HERO_VALUES: Record<HeroMetricId, { value: string; sub: string; pct: number }> = {
-    engagementRate: { value: `${parseFloat(m.engagementRate).toFixed(0)}%`, sub: 'of sessions',   pct: parseFloat(m.engagementRate) },
-    bounceRate:     { value: `${parseFloat(m.bounceRate).toFixed(0)}%`,     sub: 'leaving early', pct: parseFloat(m.bounceRate) },
+    engagementRate: { value: `${parseFloat(m.engagementRate).toFixed(0)}%`, sub: 'of sessions',    pct: parseFloat(m.engagementRate) },
+    bounceRate:     { value: `${parseFloat(m.bounceRate).toFixed(0)}%`,     sub: 'leaving early',  pct: parseFloat(m.bounceRate) },
     activeUsers:    { value: fmt(m.activeUsers),                             sub: `${newPct}% new`, pct: Math.min((m.activeUsers / Math.max(m.sessions, 1)) * 100, 100) },
     sessions:       { value: fmt(m.sessions),                                sub: 'total',          pct: Math.min((m.sessions / Math.max(m.pageViews, 1)) * 100, 100) },
     pageViews:      { value: fmt(m.pageViews),                               sub: 'total',          pct: Math.min((m.pageViews / 20000) * 100, 100) },
@@ -636,70 +753,32 @@ export function GA4Dashboard() {
     avgSession:     { value: `${Math.round(m.avgSessionDuration)}s`,         sub: 'per session',    pct: Math.min((m.avgSessionDuration / 300) * 100, 100) },
   };
 
-  const CARD_METRICS = [
-    { id: 'activeUsers',    title: 'Active Users',    value: m.activeUsers,                            icon: <Users size={16}/>,        prevValue: prev?.activeUsers },
-    { id: 'sessions',       title: 'Sessions',        value: m.sessions,                               icon: <Activity size={16}/>,     prevValue: prev?.sessions },
-    { id: 'pageViews',      title: 'Page Views',      value: m.pageViews,                              icon: <Eye size={16}/>,          prevValue: prev?.pageViews },
-    { id: 'newUsers',       title: 'New Users',       value: m.newUsers,                               icon: <UserPlus size={16}/>,     prevValue: prev?.newUsers },
-    { id: 'avgSession',     title: 'Avg Session',     value: Math.round(m.avgSessionDuration),         icon: <Clock size={16}/>,        prevValue: prev ? Math.round(prev.avgSessionDuration) : undefined },
-    { id: 'bounceRate',     title: 'Bounce Rate',     value: parseFloat(m.bounceRate),   suffix: '%',  icon: <TrendingDown size={16}/>, prevValue: prev ? parseFloat(prev.bounceRate) : undefined, inverse: true },
-    { id: 'engagementRate', title: 'Engagement',      value: parseFloat(m.engagementRate), suffix: '%', icon: <Zap size={16}/>,         prevValue: prev ? parseFloat(prev.engagementRate) : undefined },
-  ].filter(c => !heroSet.has(c.id as HeroMetricId)) as any[];
+  const sparkColors: Record<HeroMetricId, string> = {
+    activeUsers: raw.chartLine1, sessions: raw.chartLine2, pageViews: raw.chartLine3,
+    newUsers: raw.chartLine1, bounceRate: raw.ring3, engagementRate: raw.chartLine2, avgSession: raw.ring2,
+  };
 
-  const compareModeLabel = COMPARE_OPTIONS.find(o => o.value === compareMode)?.label ?? '';
+  const CARD_METRICS = [
+    { id: 'activeUsers',    title: 'Active Users',  value: m.activeUsers,                          icon: <Users size={16}/>,        prevValue: prev?.activeUsers,                                     sparkData: ga4Spark.activeUsers,    sparkColor: raw.chartLine1 },
+    { id: 'sessions',       title: 'Sessions',      value: m.sessions,                             icon: <Activity size={16}/>,     prevValue: prev?.sessions,                                        sparkData: ga4Spark.sessions,       sparkColor: raw.chartLine2 },
+    { id: 'pageViews',      title: 'Page Views',    value: m.pageViews,                            icon: <Eye size={16}/>,          prevValue: prev?.pageViews,                                       sparkData: ga4Spark.pageViews,      sparkColor: raw.chartLine3 },
+    { id: 'newUsers',       title: 'New Users',     value: m.newUsers,                             icon: <UserPlus size={16}/>,     prevValue: prev?.newUsers,                                        sparkData: ga4Spark.newUsers,       sparkColor: raw.chartLine1 },
+    { id: 'avgSession',     title: 'Avg Session',   value: Math.round(m.avgSessionDuration),       icon: <Clock size={16}/>,        prevValue: prev ? Math.round(prev.avgSessionDuration) : undefined, sparkData: ga4Spark.avgSession,     sparkColor: raw.ring2      },
+    { id: 'bounceRate',     title: 'Bounce Rate',   value: parseFloat(m.bounceRate), suffix: '%',  icon: <TrendingDown size={16}/>, prevValue: prev ? parseFloat(prev.bounceRate) : undefined, inverse: true, sparkData: ga4Spark.bounceRate, sparkColor: raw.ring3 },
+    { id: 'engagementRate', title: 'Engagement',    value: parseFloat(m.engagementRate), suffix: '%', icon: <Zap size={16}/>,      prevValue: prev ? parseFloat(prev.engagementRate) : undefined,    sparkData: ga4Spark.engagementRate, sparkColor: raw.chartLine2 },
+  ].filter(c => !heroSet.has(c.id as HeroMetricId)) as any[];
 
   return (
     <div className={`min-h-screen ${tw.bg} transition-colors duration-300`} style={{ color: raw.text }}>
+
       {showPicker && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
-          onClick={e => { if (e.target === e.currentTarget) setShowPicker(false); }}>
-          <div className={`${tw.card} border ${tw.border} rounded-2xl shadow-2xl w-full max-w-md`} style={{ animation: 'modalIn 0.25s cubic-bezier(0.34,1.56,0.64,1)' }}>
-            <div className="flex items-center justify-between p-6 pb-4">
-              <div>
-                <h3 className={`${tw.text} font-bold text-lg`}>Customize Hero Metrics</h3>
-                <p className={`${tw.subtext} text-xs mt-0.5`}>Pick 3 metrics to highlight at the top</p>
-              </div>
-              <button onClick={() => setShowPicker(false)} className={`${tw.pillInactive} p-1.5 rounded-lg`}><X size={16} /></button>
-            </div>
-            <div className="px-6 pb-6 space-y-2">
-              {ALL_HERO_METRICS.map(metric => {
-                const idx = heroMetrics.indexOf(metric.id as HeroMetricId);
-                const isSel = idx !== -1;
-                const slotColor = isSel ? ringColors[idx] : undefined;
-                return (
-                  <button key={metric.id}
-                    onClick={() => {
-                      if (isSel) {
-                        const unsel = ALL_HERO_METRICS.find(x => !heroMetrics.includes(x.id as HeroMetricId));
-                        if (!unsel) return;
-                        const next = [...heroMetrics] as [HeroMetricId, HeroMetricId, HeroMetricId];
-                        next[idx] = unsel.id as HeroMetricId;
-                        changeHeroMetrics(next);
-                      } else {
-                        changeHeroMetrics([heroMetrics[0], heroMetrics[1], metric.id as HeroMetricId]);
-                      }
-                    }}
-                    style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 12, border: '1.5px solid', borderColor: isSel ? slotColor! : 'transparent', background: isSel ? `${slotColor}12` : 'transparent', cursor: 'pointer', transition: 'all 0.15s', outline: 'none', textAlign: 'left' }}>
-                    <div style={{ width: 28, height: 28, borderRadius: 8, border: '2px solid', borderColor: isSel ? slotColor! : raw.border, background: isSel ? slotColor! : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.15s' }}>
-                      {isSel ? <Check size={14} color="white" strokeWidth={3} /> : <span style={{ fontSize: 10, color: raw.subtext, fontWeight: 700 }}>+</span>}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className={`${tw.text} text-sm font-semibold`}>{metric.label}</p>
-                      <p className={`${tw.subtext} text-xs`}>{metric.sub}</p>
-                    </div>
-                    {isSel && <span style={{ fontSize: 10, fontWeight: 700, color: slotColor, background: `${slotColor}20`, padding: '2px 8px', borderRadius: 6 }}>Ring {idx + 1}</span>}
-                  </button>
-                );
-              })}
-            </div>
-            <div className={`border-t ${tw.border} px-6 py-4 flex items-center justify-between`}>
-              <p className={`${tw.subtext} text-xs`}>
-                {savingPrefs ? 'Saving…' : saveStatus === 'saved' ? '✓ Saved' : saveStatus === 'error' ? '⚠ Save failed' : 'Saves automatically'}
-              </p>
-              <button onClick={() => setShowPicker(false)} className={`${tw.pillActive} px-4 py-1.5 rounded-lg text-xs font-semibold`}>Done</button>
-            </div>
-          </div>
-        </div>
+        <CustomizeModal
+          selected={heroMetrics}
+          onChange={changeHeroMetrics}
+          onClose={() => setShowPicker(false)}
+          tw={tw}
+          raw={raw}
+        />
       )}
 
       <header className={`sticky top-0 z-50 ${tw.headerBg} px-3 md:px-8 py-3`}>
@@ -724,16 +803,12 @@ export function GA4Dashboard() {
               ))}
             </div>
             <div style={{ position: 'relative' }}>
-              <button
-                onClick={() => setShowDatePicker(!showDatePicker)}
+              <button onClick={() => setShowDatePicker(!showDatePicker)}
                 className={`flex items-center gap-1.5 rounded-lg text-xs font-semibold transition-all ${selectedPreset === null ? tw.pillActive : tw.pillInactive}`}
-                style={{ padding: '6px 10px', border: showDatePicker ? `2px solid ${raw.ring1}` : selectedPreset === null ? 'none' : `1.5px solid ${raw.border}`, position: 'relative' }}
-              >
+                style={{ padding: '6px 10px', border: showDatePicker ? `2px solid ${raw.ring1}` : selectedPreset === null ? 'none' : `1.5px solid ${raw.border}` }}>
                 <Calendar size={13} />
-                <span>{selectedPreset === null ? activeLabel : 'Custom'}</span>
-                {selectedPreset !== null && (
-                  <span style={{ width: 5, height: 5, borderRadius: '50%', background: raw.ring2, display: 'inline-block', marginLeft: 2 }} />
-                )}
+                <span>{selectedPreset === null ? (() => { if (!activeLabel.includes('→')) return activeLabel; const [s, e] = activeLabel.split('→').map(x => x.trim()); const sh = (d: string) => { const p = d.split('-'); return p.length === 3 ? `${p[1]}/${p[2].slice(0,2)}` : d; }; return `${sh(s)} → ${sh(e)}`; })() : 'Custom'}</span>
+                {selectedPreset !== null && <span style={{ width: 5, height: 5, borderRadius: '50%', background: raw.ring2, display: 'inline-block', marginLeft: 2 }} />}
               </button>
               {showDatePicker && (
                 <>
@@ -742,8 +817,7 @@ export function GA4Dashboard() {
                     <DateRangePicker
                       startDate={customStart} endDate={customEnd} compareMode={compareMode}
                       onApply={(s, e, cmp) => { setCustomStart(s); setCustomEnd(e); setCompareMode(cmp); setSelectedPreset(null); savePreferences({ theme, heroMetrics, mapCountry, compareMode: cmp, selectedPreset: null }); }}
-                      onClose={() => setShowDatePicker(false)}
-                      tw={tw} raw={raw}
+                      onClose={() => setShowDatePicker(false)} tw={tw} raw={raw}
                     />
                   </div>
                 </>
@@ -768,8 +842,7 @@ export function GA4Dashboard() {
 
       <main className="max-w-7xl mx-auto px-3 md:px-8 py-8 space-y-6">
         {prev && (
-          <div className={`${tw.card} border ${tw.border} rounded-xl px-4 py-2.5 flex items-center gap-2 text-xs flex-wrap`}
-            style={{ borderLeft: `3px solid ${raw.ring1}` }}>
+          <div className={`${tw.card} border ${tw.border} rounded-xl px-4 py-2.5 flex items-center gap-2 text-xs flex-wrap`} style={{ borderLeft: `3px solid ${raw.ring1}` }}>
             <TrendingUp size={12} style={{ color: raw.ring1, flexShrink: 0 }} />
             <span className={`${tw.text} font-semibold`}>Comparing to: {prevLabel}</span>
             {compareMode !== 'none' && <span className={`${tw.subtext}`}>({compareModeLabel})</span>}
@@ -802,7 +875,7 @@ export function GA4Dashboard() {
         {CARD_METRICS.length > 0 && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
             {CARD_METRICS.map((c: any, i: number) => (
-              <MetricCard key={c.id} title={c.title} value={c.value} suffix={c.suffix} icon={c.icon} index={i} tw={tw} raw={raw} previousValue={c.prevValue} inverse={c.inverse} />
+              <MetricCard key={c.id} title={c.title} value={c.value} suffix={c.suffix} icon={c.icon} index={i} tw={tw} raw={raw} previousValue={c.prevValue} inverse={c.inverse} sparkData={c.sparkData} sparkColor={c.sparkColor} />
             ))}
           </div>
         )}
@@ -906,17 +979,11 @@ export function GA4Dashboard() {
         )}
 
         <ShineCard shineColor={raw.shineColor} className={`${tw.card} border ${tw.border} rounded-2xl p-4 md:p-8`}>
-          <GoogleAdsMetrics
-            dateRange={{ start: activeStart, end: activeEnd }}
-            theme={theme} themeStyles={{ ...tw, chartGrid: raw.border, accentText: tw.accentText }}
-          />
+          <GoogleAdsMetrics dateRange={{ start: activeStart, end: activeEnd }} theme={theme} themeStyles={{ ...tw, chartGrid: raw.border, accentText: tw.accentText }} />
         </ShineCard>
 
         <ShineCard shineColor={raw.shineColor} className={`${tw.card} border ${tw.border} rounded-2xl p-4 md:p-8`}>
-          <MetricoolMetrics
-            dateRange={{ start: activeStart, end: activeEnd }}
-            theme={theme} themeStyles={{ ...tw, chartGrid: raw.border, accentText: tw.accentText }}
-          />
+          <MetricoolMetrics dateRange={{ start: activeStart, end: activeEnd }} theme={theme} themeStyles={{ ...tw, chartGrid: raw.border, accentText: tw.accentText }} />
         </ShineCard>
 
         {data.topPages.length > 0 && (
@@ -926,23 +993,14 @@ export function GA4Dashboard() {
         {data.countries.length > 0 && (
           <ShineCard shineColor={raw.shineColor} className={`${tw.card} border ${tw.border} rounded-2xl p-4 md:p-6`}>
             <p className={`${tw.subtext} text-xs font-bold uppercase tracking-widest mb-5`}>Global Audience</p>
-            <WorldHeatmap
-              countries={data.countries}
-              regions={data.regions}
-              theme={theme}
-              initialCountry={mapCountry}
-              onCountryChange={changeMapCountry}
-            />
+            <WorldHeatmap countries={data.countries} regions={data.regions} theme={theme} initialCountry={mapCountry} onCountryChange={changeMapCountry} />
           </ShineCard>
         )}
       </main>
 
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
-        @keyframes modalIn {
-          from { opacity: 0; transform: scale(0.94) translateY(8px); }
-          to   { opacity: 1; transform: scale(1) translateY(0); }
-        }
+        @keyframes modalIn { from { opacity: 0; transform: scale(0.94) translateY(8px); } to { opacity: 1; transform: scale(1) translateY(0); } }
       `}</style>
     </div>
   );
