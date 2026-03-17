@@ -565,7 +565,7 @@ function CallTrackingSection({ filteredTs, tw, raw }: {
         <div style={{ flex: 1 }}>
           <p className={`${tw.text} font-bold mb-1`} style={{ fontSize: 14 }}>Call Tracking</p>
           <p className={`${tw.subtext} text-sm leading-relaxed mb-4`} style={{ maxWidth: 480 }}>
-            Once enabled, this section shows how many visitors called your business directly from the website — including how many calls were answered. It's one of the clearest signals of real customer interest.
+            Once enabled, this section shows how many visitors called your business directly from the website — including how many calls were answered. It&apos;s one of the clearest signals of real customer interest.
           </p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
             {[
@@ -717,7 +717,7 @@ function QualifiedLeadsSection({ filteredTs, tw, raw }: {
           <div style={{ background: `${raw.ring1}08`, borderRadius: 10, padding: '12px 16px', border: `1px solid ${raw.ring1}15`, display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{ width: 6, height: 6, borderRadius: '50%', background: raw.ring2, flexShrink: 0 }} />
             <p className={`${tw.subtext} text-xs leading-relaxed`}>
-              <strong className={tw.text}>Not set up yet.</strong> Ask your account manager to enable lead tracking — they'll handle the configuration, no website changes needed.
+              <strong className={tw.text}>Not set up yet.</strong> Ask your account manager to enable lead tracking — they&apos;ll handle the configuration, no website changes needed.
             </p>
           </div>
         </div>
