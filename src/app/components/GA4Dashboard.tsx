@@ -3,18 +3,19 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import {
-  AreaChart, Area,
-  LineChart, Line,
+  AreaChart, Area, LineChart, Line,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts';
 import {
   Users, Activity, Eye, UserPlus, Clock, TrendingDown,
   Zap, Sun, Moon, Leaf, BarChart2, Settings, X, Check,
   TrendingUp, Phone, ArrowUpRight, ArrowDownRight, Calendar,
-  ChevronDown, FileText,
+  ChevronDown, FileText, PhoneCall, PhoneIncoming, PhoneMissed,
+  Target, Award,
 } from 'lucide-react';
 import { GoogleAdsMetrics } from './GoogleAdsMetrics';
 import { MetricoolMetrics } from './MetricoolMetrics';
+import { SearchConsoleMetrics } from './SearchConsoleMetrics';
 import dynamic from 'next/dynamic';
 import { MOCK_GA4 } from './mockData';
 
@@ -36,9 +37,7 @@ function fmt(n: number): string {
   return n.toLocaleString();
 }
 
-function toISODate(d: Date) {
-  return d.toISOString().split('T')[0];
-}
+function toISODate(d: Date) { return d.toISOString().split('T')[0]; }
 
 function resolveDate(s: string): Date {
   const d = new Date();
@@ -72,7 +71,6 @@ function DesktopIcon({ color }: { color: string }) {
     </svg>
   );
 }
-
 function MobileIcon({ color }: { color: string }) {
   return (
     <svg width="24" height="32" viewBox="0 0 24 32" fill="none">
@@ -82,7 +80,6 @@ function MobileIcon({ color }: { color: string }) {
     </svg>
   );
 }
-
 function TabletIcon({ color }: { color: string }) {
   return (
     <svg width="26" height="32" viewBox="0 0 26 32" fill="none">
@@ -210,13 +207,17 @@ interface GA4Data {
   previousDateRange?: { startDate: string; endDate: string };
   metrics: GA4Metrics;
   previousMetrics?: GA4Metrics | null;
-  timeSeries: Array<{ date: string; activeUsers: number; sessions: number; pageViews: number; bounceRate?: number; engagementRate?: number; newUsers?: number; avgSessionDuration?: number }>;
+  timeSeries: Array<{
+    date: string; activeUsers: number; sessions: number; pageViews: number;
+    bounceRate?: number; engagementRate?: number; newUsers?: number; avgSessionDuration?: number;
+    phoneCallClicks?: number; callButtonClicks?: number; callConnected?: number;
+    formSubmits?: number; contactPageViews?: number; quoteRequests?: number;
+  }>;
   topPages: Array<{ title: string; path: string; views: number }>;
   trafficSources: Array<{ source: string; sessions: number }>;
   devices: Array<{ device: string; users: number }>;
   countries: Array<{ country: string; users: number }>;
   regions?: Array<{ country: string; region: string; users: number }>;
-  callEvents?: Array<{ event: string; count: number }>;
 }
 
 function Spark({ data, color, uid }: { data: number[]; color: string; uid: string }) {
@@ -272,7 +273,12 @@ function RingGauge({ value, label, sub, color, trackColor, pct, size = 160 }: {
   value: string; label: string; sub: string; color: string; trackColor: string; pct: number; size?: number;
 }) {
   const [animated, setAnimated] = useState(false);
-  useEffect(() => { const t = setTimeout(() => setAnimated(true), 200); return () => clearTimeout(t); }, []);
+  const prevPctRef = useRef(0);
+  useEffect(() => {
+    setAnimated(false);
+    const t = setTimeout(() => { setAnimated(true); prevPctRef.current = pct; }, 50);
+    return () => clearTimeout(t);
+  }, [pct, value]);
   const r = size * 0.38, circ = 2 * Math.PI * r;
   const dash = animated ? Math.min(pct / 100, 1) * circ : 0;
   return (
@@ -297,7 +303,7 @@ function RingGauge({ value, label, sub, color, trackColor, pct, size = 160 }: {
 function useCountUp(target: number, duration = 1000) {
   const [value, setValue] = useState(0);
   useEffect(() => {
-    if (!target) return;
+    if (!target) { setValue(0); return; }
     let start = 0;
     const step = target / (duration / 16);
     const timer = setInterval(() => {
@@ -313,20 +319,17 @@ function useCountUp(target: number, duration = 1000) {
 function MetricCard({ title, value, suffix = '', icon, index, tw, raw, previousValue, inverse = false, sparkData, sparkColor }: {
   title: string; value: number; suffix?: string; icon: React.ReactNode;
   index: number; tw: typeof THEME_TW[Theme]; raw: typeof THEME_RAW[Theme];
-  previousValue?: number; inverse?: boolean;
-  sparkData?: number[]; sparkColor?: string;
+  previousValue?: number; inverse?: boolean; sparkData?: number[]; sparkColor?: string;
 }) {
   const [visible, setVisible] = useState(false);
   const count = useCountUp(value);
   useEffect(() => { const t = setTimeout(() => setVisible(true), index * 75); return () => clearTimeout(t); }, [index]);
   const uid   = `${title.replace(/\s+/g, '').toLowerCase()}-${index}`;
   const color = sparkColor || raw.ring1;
-  const hasSpark = sparkData && sparkData.length > 1;
-
   return (
     <ShineCard shineColor={raw.shineColor}
       className={`${tw.card} border ${tw.border} rounded-2xl cursor-default group overflow-hidden`}
-      style={{ opacity: visible ? 1 : 0, transform: visible ? 'translateY(0)' : 'translateY(14px)', transition: 'opacity 0.4s ease, transform 0.3s ease, box-shadow 0.3s ease' }}
+      style={{ opacity: visible ? 1 : 0, transform: visible ? 'translateY(0)' : 'translateY(14px)', transition: 'opacity 0.4s ease, transform 0.3s ease' }}
     >
       <div
         onMouseEnter={e => { const p = e.currentTarget.parentElement as HTMLDivElement; p.style.transform = 'translateY(-2px)'; p.style.boxShadow = '0 8px 24px rgba(0,0,0,0.1)'; }}
@@ -347,9 +350,9 @@ function MetricCard({ title, value, suffix = '', icon, index, tw, raw, previousV
           </div>
         )}
       </div>
-      {hasSpark && (
+      {sparkData && sparkData.length > 1 && (
         <div style={{ height: 40, position: 'relative', zIndex: 1 }}>
-          <Spark data={sparkData!} color={color} uid={uid} />
+          <Spark data={sparkData} color={color} uid={uid} />
         </div>
       )}
     </ShineCard>
@@ -359,9 +362,7 @@ function MetricCard({ title, value, suffix = '', icon, index, tw, raw, previousV
 function CustomizeModal({ selected, onChange, onClose, tw, raw }: {
   selected: [HeroMetricId, HeroMetricId, HeroMetricId];
   onChange: (m: [HeroMetricId, HeroMetricId, HeroMetricId]) => void;
-  onClose: () => void;
-  tw: typeof THEME_TW[Theme];
-  raw: typeof THEME_RAW[Theme];
+  onClose: () => void; tw: typeof THEME_TW[Theme]; raw: typeof THEME_RAW[Theme];
 }) {
   const [draft, setDraft]     = useState<[HeroMetricId, HeroMetricId, HeroMetricId]>([...selected]);
   const [activeSlot, setSlot] = useState<0 | 1 | 2>(0);
@@ -370,8 +371,8 @@ function CustomizeModal({ selected, onChange, onClose, tw, raw }: {
 
   function pickMetric(id: HeroMetricId) {
     const next: [HeroMetricId, HeroMetricId, HeroMetricId] = [...draft];
-    const existingSlot = next.indexOf(id) as -1 | 0 | 1 | 2;
-    if (existingSlot !== -1 && existingSlot !== activeSlot) next[existingSlot] = next[activeSlot];
+    const ex = next.indexOf(id) as -1 | 0 | 1 | 2;
+    if (ex !== -1 && ex !== activeSlot) next[ex] = next[activeSlot];
     next[activeSlot] = id;
     setDraft(next);
     setSlot(s => (s < 2 ? (s + 1) as 0 | 1 | 2 : s));
@@ -383,7 +384,6 @@ function CustomizeModal({ selected, onChange, onClose, tw, raw }: {
       <div className={`${tw.card} border ${tw.border} rounded-2xl shadow-2xl w-full max-w-sm`}
         style={{ animation: 'modalIn 0.22s cubic-bezier(0.34,1.56,0.64,1)', maxHeight: '90vh', overflowY: 'auto' }}
         onClick={e => e.stopPropagation()}>
-
         <div className="flex items-center justify-between p-5 pb-4">
           <div>
             <h3 className={`${tw.text} font-bold`} style={{ fontSize: 15 }}>Customize Hero Metrics</h3>
@@ -391,15 +391,11 @@ function CustomizeModal({ selected, onChange, onClose, tw, raw }: {
           </div>
           <button onClick={onClose} className={`${tw.pillInactive} p-1.5 rounded-lg`}><X size={15} /></button>
         </div>
-
         <div style={{ padding: '0 20px 16px', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
           {([0, 1, 2] as const).map(s => {
-            const color    = slotColors[s];
-            const metric   = ALL_HERO_METRICS.find(m => m.id === draft[s])!;
-            const isActive = activeSlot === s;
+            const color = slotColors[s]; const metric = ALL_HERO_METRICS.find(m => m.id === draft[s])!; const isActive = activeSlot === s;
             return (
-              <button key={s} onClick={() => setSlot(s)}
-                style={{ padding: '10px 8px', borderRadius: 10, border: `2px solid ${isActive ? color : raw.border}`, background: isActive ? `${color}12` : 'transparent', cursor: 'pointer', textAlign: 'center', transition: 'all 0.15s', outline: 'none' }}>
+              <button key={s} onClick={() => setSlot(s)} style={{ padding: '10px 8px', borderRadius: 10, border: `2px solid ${isActive ? color : raw.border}`, background: isActive ? `${color}12` : 'transparent', cursor: 'pointer', textAlign: 'center', transition: 'all 0.15s', outline: 'none' }}>
                 <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: isActive ? color : raw.subtext, marginBottom: 5 }}>{slotLabels[s]}</div>
                 <div style={{ width: 20, height: 3, borderRadius: 2, background: color, margin: '0 auto 6px', opacity: isActive ? 1 : 0.4 }} />
                 <div style={{ fontSize: 11, fontWeight: 700, color: isActive ? color : raw.text, lineHeight: 1.2 }}>{metric.label}</div>
@@ -408,42 +404,32 @@ function CustomizeModal({ selected, onChange, onClose, tw, raw }: {
             );
           })}
         </div>
-
         <div className={`border-t ${tw.border}`} style={{ margin: '0 20px' }} />
-
         <div style={{ padding: '12px 20px 8px' }}>
-          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: raw.subtext, marginBottom: 10 }}>
-            Assign to {slotLabels[activeSlot]}
-          </p>
+          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: raw.subtext, marginBottom: 10 }}>Assign to {slotLabels[activeSlot]}</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             {ALL_HERO_METRICS.map(metric => {
-              const assignedSlot  = draft.indexOf(metric.id as HeroMetricId) as -1 | 0 | 1 | 2;
-              const isCurrentSlot = assignedSlot === activeSlot;
-              const isOtherSlot   = assignedSlot !== -1 && assignedSlot !== activeSlot;
-              const slotColor     = assignedSlot !== -1 ? slotColors[assignedSlot] : undefined;
+              const as2 = draft.indexOf(metric.id as HeroMetricId) as -1 | 0 | 1 | 2;
+              const isCur = as2 === activeSlot; const isOth = as2 !== -1 && as2 !== activeSlot;
+              const sc = as2 !== -1 ? slotColors[as2] : undefined;
               return (
                 <button key={metric.id} onClick={() => pickMetric(metric.id as HeroMetricId)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', borderRadius: 9, border: `1.5px solid ${isCurrentSlot ? slotColors[activeSlot] : 'transparent'}`, background: isCurrentSlot ? `${slotColors[activeSlot]}12` : 'transparent', cursor: 'pointer', textAlign: 'left', outline: 'none', transition: 'all 0.12s' }}
-                  onMouseEnter={e => { if (!isCurrentSlot) (e.currentTarget as HTMLButtonElement).style.background = `${raw.border}60`; }}
-                  onMouseLeave={e => { if (!isCurrentSlot) (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; }}>
-                  <div style={{ width: 22, height: 22, borderRadius: 6, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: isCurrentSlot ? slotColors[activeSlot] : isOtherSlot ? `${slotColor}20` : raw.track, border: `1.5px solid ${isCurrentSlot ? slotColors[activeSlot] : isOtherSlot ? slotColor! : raw.border}`, transition: 'all 0.12s' }}>
-                    {isCurrentSlot ? <Check size={12} color="white" strokeWidth={3} /> : isOtherSlot ? <span style={{ fontSize: 8, fontWeight: 800, color: slotColor }}>{assignedSlot + 1}</span> : null}
+                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', borderRadius: 9, border: `1.5px solid ${isCur ? slotColors[activeSlot] : 'transparent'}`, background: isCur ? `${slotColors[activeSlot]}12` : 'transparent', cursor: 'pointer', textAlign: 'left', outline: 'none', transition: 'all 0.12s' }}
+                  onMouseEnter={e => { if (!isCur) (e.currentTarget as HTMLButtonElement).style.background = `${raw.border}60`; }}
+                  onMouseLeave={e => { if (!isCur) (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; }}>
+                  <div style={{ width: 22, height: 22, borderRadius: 6, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: isCur ? slotColors[activeSlot] : isOth ? `${sc}20` : raw.track, border: `1.5px solid ${isCur ? slotColors[activeSlot] : isOth ? sc! : raw.border}`, transition: 'all 0.12s' }}>
+                    {isCur ? <Check size={12} color="white" strokeWidth={3} /> : isOth ? <span style={{ fontSize: 8, fontWeight: 800, color: sc }}>{as2 + 1}</span> : null}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 13, fontWeight: 600, color: raw.text }}>{metric.label}</div>
                     <div style={{ fontSize: 11, color: raw.subtext }}>{metric.sub}</div>
                   </div>
-                  {isOtherSlot && (
-                    <span style={{ fontSize: 9, fontWeight: 700, color: slotColor, background: `${slotColor}18`, padding: '2px 6px', borderRadius: 4, flexShrink: 0 }}>
-                      in slot {assignedSlot + 1}
-                    </span>
-                  )}
+                  {isOth && <span style={{ fontSize: 9, fontWeight: 700, color: sc, background: `${sc}18`, padding: '2px 6px', borderRadius: 4, flexShrink: 0 }}>in slot {as2 + 1}</span>}
                 </button>
               );
             })}
           </div>
         </div>
-
         <div className={`border-t ${tw.border}`} style={{ padding: '14px 20px', display: 'flex', gap: 8, marginTop: 8 }}>
           <button onClick={onClose} style={{ flex: 1, padding: '8px', borderRadius: 9, border: `1px solid ${raw.border}`, background: 'transparent', color: raw.subtext, fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>Cancel</button>
           <button onClick={() => { onChange(draft); onClose(); }} className={tw.pillActive} style={{ flex: 2, padding: '8px', borderRadius: 9, border: 'none', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Apply</button>
@@ -458,9 +444,7 @@ const CustomTooltip = ({ active, payload, label, raw }: any) => {
   return (
     <div style={{ background: raw.card, border: `1px solid ${raw.border}`, borderRadius: 10, padding: '10px 14px', boxShadow: '0 4px 20px rgba(0,0,0,0.15)' }}>
       <p style={{ color: raw.subtext, fontSize: 11, marginBottom: 6, fontWeight: 600 }}>{label}</p>
-      {payload.map((p: any, i: number) => (
-        <p key={i} style={{ color: p.color, fontSize: 12, fontWeight: 700, margin: '2px 0' }}>{p.name}: {p.value?.toLocaleString()}</p>
-      ))}
+      {payload.map((p: any, i: number) => <p key={i} style={{ color: p.color, fontSize: 12, fontWeight: 700, margin: '2px 0' }}>{p.name}: {p.value?.toLocaleString()}</p>)}
     </div>
   );
 };
@@ -474,34 +458,24 @@ function DateRangePicker({ startDate, endDate, compareMode, onApply, tw, raw, on
   const [e, setE] = useState(endDate || toISODate(new Date()));
   const [cmp, setCmp] = useState(compareMode || 'previous');
   const today = toISODate(new Date());
-  const inputStyle = { background: raw.bg, border: `1px solid ${raw.border}`, borderRadius: 8, padding: '7px 12px', color: raw.text, fontSize: 13, outline: 'none', width: '100%', colorScheme: 'inherit' } as React.CSSProperties;
-  const selectStyle = { ...inputStyle, cursor: 'pointer', appearance: 'none' as const, WebkitAppearance: 'none' as const };
+  const inp = { background: raw.bg, border: `1px solid ${raw.border}`, borderRadius: 8, padding: '7px 12px', color: raw.text, fontSize: 13, outline: 'none', width: '100%', colorScheme: 'inherit' } as React.CSSProperties;
   return (
-    <div className={`${tw.card} border ${tw.border}`} style={{ position: 'fixed', bottom: 'auto', right: 16, top: 'auto', marginTop: 0, borderRadius: 16, padding: 20, boxShadow: '0 16px 48px rgba(0,0,0,0.28)', zIndex: 300, width: 'min(320px, calc(100vw - 32px))', left: 'auto' }}>
+    <div className={`${tw.card} border ${tw.border}`} style={{ position: 'fixed', bottom: 'auto', right: 16, borderRadius: 16, padding: 20, boxShadow: '0 16px 48px rgba(0,0,0,0.28)', zIndex: 300, width: 'min(320px, calc(100vw - 32px))' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <div style={{ width: 28, height: 28, borderRadius: 8, background: raw.ring1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Calendar size={14} color="white" /></div>
-          <div>
-            <p style={{ color: raw.text, fontSize: 13, fontWeight: 700, margin: 0 }}>Custom Range</p>
-            <p style={{ color: raw.subtext, fontSize: 10, margin: 0 }}>Pick dates & compare</p>
-          </div>
+          <div><p style={{ color: raw.text, fontSize: 13, fontWeight: 700, margin: 0 }}>Custom Range</p><p style={{ color: raw.subtext, fontSize: 10, margin: 0 }}>Pick dates & compare</p></div>
         </div>
         <button onClick={onClose} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: raw.subtext, padding: 4 }}><X size={16} /></button>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <div>
-          <label style={{ color: raw.subtext, fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Start date</label>
-          <input type="date" value={s} max={e || today} onChange={ev => setS(ev.target.value)} style={inputStyle} />
-        </div>
-        <div>
-          <label style={{ color: raw.subtext, fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>End date</label>
-          <input type="date" value={e} min={s} max={today} onChange={ev => setE(ev.target.value)} style={inputStyle} />
-        </div>
-        <div style={{ height: 1, background: raw.border, margin: '2px 0' }} />
+        <div><label style={{ color: raw.subtext, fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Start date</label><input type="date" value={s} max={e || today} onChange={ev => setS(ev.target.value)} style={inp} /></div>
+        <div><label style={{ color: raw.subtext, fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>End date</label><input type="date" value={e} min={s} max={today} onChange={ev => setE(ev.target.value)} style={inp} /></div>
+        <div style={{ height: 1, background: raw.border }} />
         <div>
           <label style={{ color: raw.subtext, fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Compare to</label>
           <div style={{ position: 'relative' }}>
-            <select value={cmp} onChange={ev => setCmp(ev.target.value)} style={selectStyle}>
+            <select value={cmp} onChange={ev => setCmp(ev.target.value)} style={{ ...inp, cursor: 'pointer', appearance: 'none' as any, WebkitAppearance: 'none' }}>
               {COMPARE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
             <ChevronDown size={12} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: raw.subtext, pointerEvents: 'none' }} />
@@ -517,19 +491,13 @@ function DateRangePicker({ startDate, endDate, compareMode, onApply, tw, raw, on
   );
 }
 
-function PageRow({ page, i, pct, sharePct, color, visible, raw }: {
-  page: { title: string; path: string; views: number };
-  i: number; pct: number; sharePct: number; color: string; visible: boolean;
-  raw: typeof THEME_RAW[Theme];
-}) {
+function PageRow({ page, i, pct, sharePct, color, visible, raw }: { page: { title: string; path: string; views: number }; i: number; pct: number; sharePct: number; color: string; visible: boolean; raw: typeof THEME_RAW[Theme] }) {
   const [hovered, setHovered] = useState(false);
   return (
     <div onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}
       style={{ padding: '10px 24px', background: hovered ? `${raw.ring1}06` : 'transparent', transition: 'background 0.15s', opacity: visible ? 1 : 0, transform: visible ? 'translateX(0)' : 'translateX(-16px)', transitionDelay: `${i * 60}ms` }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-        <div style={{ width: 28, height: 28, borderRadius: 8, flexShrink: 0, background: `${color}18`, border: `1.5px solid ${color}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', color, fontSize: 12, fontWeight: 800, transform: hovered ? 'scale(1.1)' : 'scale(1)', transition: 'transform 0.2s cubic-bezier(0.34,1.56,0.64,1)' }}>
-          {i + 1}
-        </div>
+        <div style={{ width: 28, height: 28, borderRadius: 8, flexShrink: 0, background: `${color}18`, border: `1.5px solid ${color}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', color, fontSize: 12, fontWeight: 800, transform: hovered ? 'scale(1.1)' : 'scale(1)', transition: 'transform 0.2s cubic-bezier(0.34,1.56,0.64,1)' }}>{i + 1}</div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <p style={{ color: raw.text, fontSize: 13, fontWeight: 600, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{page.title}</p>
           <p style={{ color: raw.subtext, fontSize: 11, fontFamily: 'monospace', margin: '1px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{page.path}</p>
@@ -546,10 +514,7 @@ function PageRow({ page, i, pct, sharePct, color, visible, raw }: {
   );
 }
 
-function TopPagesSection({ pages, tw, raw }: {
-  pages: Array<{ title: string; path: string; views: number }>;
-  tw: typeof THEME_TW[Theme]; raw: typeof THEME_RAW[Theme];
-}) {
+function TopPagesSection({ pages, tw, raw }: { pages: Array<{ title: string; path: string; views: number }>; tw: typeof THEME_TW[Theme]; raw: typeof THEME_RAW[Theme] }) {
   const [visible, setVisible] = useState(false);
   useEffect(() => { const t = setTimeout(() => setVisible(true), 100); return () => clearTimeout(t); }, []);
   const max = Math.max(...pages.map(p => p.views), 1);
@@ -559,22 +524,292 @@ function TopPagesSection({ pages, tw, raw }: {
     <div className={`${tw.card} border ${tw.border} rounded-2xl overflow-hidden`}>
       <div style={{ padding: '20px 24px 0' }}>
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <FileText size={14} style={{ color: raw.ring1 }} />
-            <p className={`${tw.subtext} text-xs font-bold uppercase tracking-widest`}>Top Pages</p>
-          </div>
+          <div className="flex items-center gap-2"><FileText size={14} style={{ color: raw.ring1 }} /><p className={`${tw.subtext} text-xs font-bold uppercase tracking-widest`}>Top Pages</p></div>
           <p className={`${tw.subtext} text-xs`}>{total.toLocaleString()} total views</p>
         </div>
       </div>
       <div style={{ padding: '16px 0 8px' }}>
-        {pages.map((page, i) => {
-          const pct      = (page.views / max) * 100;
-          const sharePct = Math.round((page.views / total) * 100);
-          const color    = rankColors[Math.min(i, rankColors.length - 1)];
-          return <PageRow key={i} page={page} i={i} pct={pct} sharePct={sharePct} color={color} visible={visible} raw={raw} />;
-        })}
+        {pages.map((page, i) => <PageRow key={i} page={page} i={i} pct={(page.views / max) * 100} sharePct={Math.round((page.views / total) * 100)} color={rankColors[Math.min(i, rankColors.length - 1)]} visible={visible} raw={raw} />)}
       </div>
     </div>
+  );
+}
+
+function CallTrackingSection({ filteredTs, tw, raw }: {
+  filteredTs: GA4Data['timeSeries']; tw: typeof THEME_TW[Theme]; raw: typeof THEME_RAW[Theme];
+}) {
+  const totalCallClicks   = filteredTs.reduce((s, d) => s + (d.phoneCallClicks ?? 0), 0);
+  const totalButtonClicks = filteredTs.reduce((s, d) => s + (d.callButtonClicks ?? 0), 0);
+  const totalConnected    = filteredTs.reduce((s, d) => s + (d.callConnected ?? 0), 0);
+  const totalSessions     = filteredTs.reduce((s, d) => s + d.sessions, 0);
+  const callRate          = totalSessions > 0 ? ((totalCallClicks / totalSessions) * 100).toFixed(2) : '0';
+  const connectRate       = totalCallClicks > 0 ? Math.round((totalConnected / totalCallClicks) * 100) : 0;
+
+  const hasData = totalCallClicks > 0 || totalButtonClicks > 0;
+
+  const callSparkClicks  = filteredTs.map(d => d.phoneCallClicks ?? 0);
+  const callSparkConnect = filteredTs.map(d => d.callConnected ?? 0);
+
+  const funnelSteps = [
+    { label: 'Button Clicks',  value: totalButtonClicks, color: raw.chartLine3, icon: <Phone size={13} />,         pct: 100 },
+    { label: 'Tap to Call',    value: totalCallClicks,   color: raw.chartLine2, icon: <PhoneCall size={13} />,     pct: totalButtonClicks > 0 ? Math.round((totalCallClicks / totalButtonClicks) * 100) : 0 },
+    { label: 'Connected',      value: totalConnected,    color: raw.ring1,      icon: <PhoneIncoming size={13} />, pct: totalButtonClicks > 0 ? Math.round((totalConnected / totalButtonClicks) * 100) : 0 },
+  ];
+
+  if (!hasData) return (
+    <ShineCard shineColor={raw.shineColor} className={`${tw.card} border ${tw.border} rounded-2xl p-6`}>
+      <div className="flex items-start gap-4">
+        <div style={{ width: 40, height: 40, borderRadius: 12, background: `${raw.ring1}12`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <Phone size={18} style={{ color: raw.ring1 }} />
+        </div>
+        <div style={{ flex: 1 }}>
+          <p className={`${tw.text} font-bold mb-1`} style={{ fontSize: 14 }}>Call Tracking</p>
+          <p className={`${tw.subtext} text-sm leading-relaxed mb-4`} style={{ maxWidth: 480 }}>
+            Once enabled, this section shows how many visitors called your business directly from the website — including how many calls were answered. It's one of the clearest signals of real customer interest.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+            {[
+              { icon: <PhoneCall size={14} />, label: 'Calls initiated',   desc: 'How many people tapped your phone number' },
+              { icon: <PhoneIncoming size={14} />, label: 'Calls connected', desc: 'How many actually reached you' },
+              { icon: <TrendingUp size={14} />, label: 'Call rate',          desc: 'What % of website visitors called' },
+            ].map((item, i) => (
+              <div key={i} style={{ background: `${raw.ring1}08`, borderRadius: 10, padding: '12px 14px', border: `1px solid ${raw.ring1}18` }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: raw.ring1, marginBottom: 4 }}>{item.icon}<span style={{ fontSize: 11, fontWeight: 700 }}>{item.label}</span></div>
+                <p className={`${tw.subtext}`} style={{ fontSize: 11, lineHeight: 1.5 }}>{item.desc}</p>
+              </div>
+            ))}
+          </div>
+          <div style={{ background: `${raw.ring1}08`, borderRadius: 10, padding: '12px 16px', border: `1px solid ${raw.ring1}15`, display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 6, height: 6, borderRadius: '50%', background: raw.ring2, flexShrink: 0 }} />
+            <p className={`${tw.subtext} text-xs leading-relaxed`}>
+              <strong className={tw.text}>Not set up yet.</strong> Ask your account manager to enable call tracking — it takes under 30 minutes and requires no changes to your website.
+            </p>
+          </div>
+        </div>
+      </div>
+    </ShineCard>
+  );
+
+  return (
+    <ShineCard shineColor={raw.shineColor} className={`${tw.card} border ${tw.border} rounded-2xl p-5 md:p-6`}>
+      <div className="flex items-center gap-2 mb-5">
+        <Phone size={14} style={{ color: raw.ring1 }} />
+        <p className={`${tw.subtext} text-xs font-bold uppercase tracking-widest`}>Call Tracking</p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <p className={`${tw.subtext} text-xs font-semibold uppercase tracking-widest mb-4`} style={{ fontSize: 9 }}>Call Funnel</p>
+          <div className="space-y-3">
+            {funnelSteps.map((step, i) => (
+              <div key={i}>
+                <div className="flex justify-between items-center mb-1.5">
+                  <div className="flex items-center gap-2">
+                    <span style={{ color: step.color }}>{step.icon}</span>
+                    <span className={`${tw.text} text-sm`}>{step.label}</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span style={{ color: step.color, fontSize: 13, fontWeight: 700 }}>{fmt(step.value)}</span>
+                    {i > 0 && <span style={{ fontSize: 10, color: raw.subtext, background: `${step.color}15`, borderRadius: 4, padding: '1px 6px', fontWeight: 600 }}>{step.pct}%</span>}
+                  </div>
+                </div>
+                <div style={{ height: 5, background: raw.track, borderRadius: 3, overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${step.pct}%`, background: step.color, borderRadius: 3, transition: 'width 0.9s ease' }} />
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className={`${tw.trackBg} rounded-xl p-3 mt-4 flex gap-4`}>
+            <div>
+              <p className={`${tw.subtext}`} style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700 }}>Call Rate</p>
+              <p style={{ color: raw.ring1, fontWeight: 800, fontSize: 18, lineHeight: 1.2 }}>{callRate}%</p>
+              <p className={`${tw.subtext} text-xs`}>of sessions</p>
+            </div>
+            <div style={{ width: 1, background: raw.border }} />
+            <div>
+              <p className={`${tw.subtext}`} style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700 }}>Connect Rate</p>
+              <p style={{ color: raw.ring1, fontWeight: 800, fontSize: 18, lineHeight: 1.2 }}>{connectRate}%</p>
+              <p className={`${tw.subtext} text-xs`}>of tap-to-calls</p>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <p className={`${tw.subtext} text-xs font-semibold uppercase tracking-widest mb-4`} style={{ fontSize: 9 }}>Call Volume Over Time</p>
+          <div style={{ height: 130 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={filteredTs.map(d => ({ date: d.date, clicks: d.phoneCallClicks ?? 0, connected: d.callConnected ?? 0 }))} margin={{ top: 2, right: 0, left: 0, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="callg1" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={raw.chartLine3} stopOpacity={0.25} />
+                    <stop offset="100%" stopColor={raw.chartLine3} stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="callg2" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={raw.ring1} stopOpacity={0.25} />
+                    <stop offset="100%" stopColor={raw.ring1} stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke={raw.border} />
+                <XAxis dataKey="date" tick={{ fill: raw.subtext, fontSize: 8 }} axisLine={false} tickLine={false} interval="preserveStartEnd"
+                  tickFormatter={v => v?.length === 8 ? `${v.slice(4,6)}/${v.slice(6,8)}` : v} />
+                <YAxis tick={{ fill: raw.subtext, fontSize: 8 }} axisLine={false} tickLine={false} width={24} />
+                <Tooltip content={<CustomTooltip raw={raw} />} />
+                <Area type="monotone" dataKey="clicks"    stroke={raw.chartLine3} strokeWidth={1.5} fill="url(#callg1)" name="Tap to Call" dot={false} />
+                <Area type="monotone" dataKey="connected" stroke={raw.ring1}      strokeWidth={1.5} fill="url(#callg2)" name="Connected"   dot={false} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+          <p className={`${tw.subtext} text-xs mt-3 leading-relaxed`} style={{ fontSize: 10 }}>
+            Recorded each time a visitor taps your phone number or a call button on the website. Connected calls are those where the phone app successfully opened.
+          </p>
+        </div>
+      </div>
+    </ShineCard>
+  );
+}
+
+function QualifiedLeadsSection({ filteredTs, tw, raw }: {
+  filteredTs: GA4Data['timeSeries']; tw: typeof THEME_TW[Theme]; raw: typeof THEME_RAW[Theme];
+}) {
+  const totalSessions    = filteredTs.reduce((s, d) => s + d.sessions, 0);
+  const totalFormSubmits = filteredTs.reduce((s, d) => s + (d.formSubmits ?? 0), 0);
+  const totalQuotes      = filteredTs.reduce((s, d) => s + (d.quoteRequests ?? 0), 0);
+  const totalContact     = filteredTs.reduce((s, d) => s + (d.contactPageViews ?? 0), 0);
+  const totalCalls       = filteredTs.reduce((s, d) => s + (d.phoneCallClicks ?? 0), 0);
+
+  const qualifiedLeads   = totalFormSubmits + totalQuotes + totalCalls;
+  const qualRate         = totalSessions > 0 ? ((qualifiedLeads / totalSessions) * 100).toFixed(2) : '0';
+
+  const formSparkData    = filteredTs.map(d => d.formSubmits ?? 0);
+  const quoteSparkData   = filteredTs.map(d => d.quoteRequests ?? 0);
+
+  const sources = [
+    { label: 'Form Submissions', value: totalFormSubmits, color: raw.ring1,      pct: qualifiedLeads > 0 ? Math.round((totalFormSubmits / qualifiedLeads) * 100) : 0, spark: formSparkData },
+    { label: 'Quote Requests',   value: totalQuotes,      color: raw.ring2,      pct: qualifiedLeads > 0 ? Math.round((totalQuotes / qualifiedLeads) * 100) : 0,      spark: quoteSparkData },
+    { label: 'Phone Call Taps',  value: totalCalls,       color: raw.chartLine2, pct: qualifiedLeads > 0 ? Math.round((totalCalls / qualifiedLeads) * 100) : 0,       spark: filteredTs.map(d => d.phoneCallClicks ?? 0) },
+  ];
+
+  const hasData = qualifiedLeads > 0;
+
+  if (!hasData) return (
+    <ShineCard shineColor={raw.shineColor} className={`${tw.card} border ${tw.border} rounded-2xl p-6`}>
+      <div className="flex items-start gap-4">
+        <div style={{ width: 40, height: 40, borderRadius: 12, background: `${raw.ring1}12`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <Target size={18} style={{ color: raw.ring1 }} />
+        </div>
+        <div style={{ flex: 1 }}>
+          <p className={`${tw.text} font-bold mb-1`} style={{ fontSize: 14 }}>Qualified Leads</p>
+          <p className={`${tw.subtext} text-sm leading-relaxed mb-4`} style={{ maxWidth: 480 }}>
+            Once enabled, this section counts the visitors who took a meaningful action — submitted a form, requested a quote, or called — and shows what percentage of your overall website traffic they represent.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+            {[
+              { label: 'Form submissions',  desc: 'Contact and enquiry forms completed' },
+              { label: 'Quote requests',    desc: 'Visitors who asked for a quote or estimate' },
+              { label: 'Phone call taps',   desc: 'Visitors who tapped to call from the site' },
+            ].map((item, i) => (
+              <div key={i} style={{ background: `${raw.ring1}08`, borderRadius: 10, padding: '12px 14px', border: `1px solid ${raw.ring1}18` }}>
+                <p style={{ fontSize: 11, fontWeight: 700, color: raw.ring1, marginBottom: 4 }}>{item.label}</p>
+                <p className={`${tw.subtext}`} style={{ fontSize: 11, lineHeight: 1.5 }}>{item.desc}</p>
+              </div>
+            ))}
+          </div>
+          <div style={{ background: `${raw.ring1}08`, borderRadius: 10, padding: '12px 16px', border: `1px solid ${raw.ring1}15`, display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 6, height: 6, borderRadius: '50%', background: raw.ring2, flexShrink: 0 }} />
+            <p className={`${tw.subtext} text-xs leading-relaxed`}>
+              <strong className={tw.text}>Not set up yet.</strong> Ask your account manager to enable lead tracking — they'll handle the configuration, no website changes needed.
+            </p>
+          </div>
+        </div>
+      </div>
+    </ShineCard>
+  );
+
+  return (
+    <ShineCard shineColor={raw.shineColor} className={`${tw.card} border ${tw.border} rounded-2xl p-5 md:p-6`}>
+      <div className="flex items-center gap-2 mb-5">
+        <Target size={14} style={{ color: raw.ring1 }} />
+        <p className={`${tw.subtext} text-xs font-bold uppercase tracking-widest`}>Qualified Leads</p>
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ fontSize: 10, color: raw.subtext, background: `${raw.ring1}12`, borderRadius: 5, padding: '2px 8px', fontWeight: 600 }}>
+              Website activity
+            </span>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 4 }}>
+            <span style={{ fontSize: 'clamp(2rem, 5vw, 2.8rem)', fontWeight: 800, letterSpacing: '-0.04em', color: raw.text, lineHeight: 1 }}>{fmt(qualifiedLeads)}</span>
+            <span className={`${tw.subtext} text-sm`}>qualified leads</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20 }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: raw.ring1 }}>{qualRate}%</span>
+            <span className={`${tw.subtext} text-xs`}>session-to-lead rate</span>
+            <div style={{ flex: 1, height: 3, background: raw.track, borderRadius: 2, overflow: 'hidden' }}>
+              <div style={{ height: '100%', width: `${Math.min(parseFloat(qualRate) * 10, 100)}%`, background: raw.ring1, borderRadius: 2, transition: 'width 1s ease' }} />
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            {sources.map(src => (
+              <div key={src.label}>
+                <div className="flex justify-between items-center mb-1.5">
+                  <span className={`${tw.text} text-sm`}>{src.label}</span>
+                  <div className="flex items-center gap-2">
+                    <span style={{ color: src.color, fontSize: 13, fontWeight: 700 }}>{fmt(src.value)}</span>
+                    <span style={{ fontSize: 10, color: raw.subtext, background: `${src.color}15`, borderRadius: 4, padding: '1px 5px', fontWeight: 600 }}>{src.pct}%</span>
+                  </div>
+                </div>
+                <div style={{ height: 5, background: raw.track, borderRadius: 3, overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${src.pct}%`, background: src.color, borderRadius: 3, transition: 'width 0.9s ease' }} />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className={`${tw.trackBg} rounded-xl p-3 mt-4`}>
+            <p className={`${tw.subtext} text-xs`} style={{ fontSize: 10, lineHeight: 1.6 }}>
+              <strong>How we count leads:</strong> We count anyone who submitted a form, requested a quote, or tapped to call — actions that signal genuine intent to buy. General browsing like visiting the contact page ({fmt(totalContact)} visits this period) is tracked separately but not included.
+            </p>
+          </div>
+        </div>
+
+        <div>
+          <p className={`${tw.subtext} text-xs font-semibold uppercase tracking-widest mb-4`} style={{ fontSize: 9 }}>Lead Volume Over Time</p>
+          <div style={{ height: 160 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart
+                data={filteredTs.map(d => ({
+                  date: d.date,
+                  forms:  d.formSubmits ?? 0,
+                  quotes: d.quoteRequests ?? 0,
+                  calls:  d.phoneCallClicks ?? 0,
+                }))}
+                margin={{ top: 2, right: 0, left: 0, bottom: 0 }}
+              >
+                <defs>
+                  {[['qlg1', raw.ring1], ['qlg2', raw.ring2], ['qlg3', raw.chartLine2]].map(([id, color]) => (
+                    <linearGradient key={id} id={id} x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor={color} stopOpacity={0.2} />
+                      <stop offset="100%" stopColor={color} stopOpacity={0} />
+                    </linearGradient>
+                  ))}
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke={raw.border} />
+                <XAxis dataKey="date" tick={{ fill: raw.subtext, fontSize: 8 }} axisLine={false} tickLine={false} interval="preserveStartEnd"
+                  tickFormatter={v => v?.length === 8 ? `${v.slice(4,6)}/${v.slice(6,8)}` : v} />
+                <YAxis tick={{ fill: raw.subtext, fontSize: 8 }} axisLine={false} tickLine={false} width={24} />
+                <Tooltip content={<CustomTooltip raw={raw} />} />
+                <Area type="monotone" dataKey="forms"  stroke={raw.ring1}      strokeWidth={1.5} fill="url(#qlg1)" name="Forms"  dot={false} />
+                <Area type="monotone" dataKey="quotes" stroke={raw.ring2}      strokeWidth={1.5} fill="url(#qlg2)" name="Quotes" dot={false} />
+                <Area type="monotone" dataKey="calls"  stroke={raw.chartLine2} strokeWidth={1.5} fill="url(#qlg3)" name="Calls"  dot={false} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
+    </ShineCard>
   );
 }
 
@@ -589,11 +824,11 @@ export function GA4Dashboard() {
   const [compareMode, setCompareMode]       = useState('previous');
   const [showDatePicker, setShowDatePicker] = useState(false);
 
-  const [theme, setTheme]           = useState<Theme>('light');
-  const [heroMetrics, setHeroMetrics] = useState<[HeroMetricId, HeroMetricId, HeroMetricId]>(DEFAULT_HERO);
-  const [showPicker, setShowPicker] = useState(false);
-  const [mapCountry, setMapCountry] = useState<string | null>(null);
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'error'>('idle');
+  const [theme, setTheme]               = useState<Theme>('light');
+  const [heroMetrics, setHeroMetrics]   = useState<[HeroMetricId, HeroMetricId, HeroMetricId]>(DEFAULT_HERO);
+  const [showPicker, setShowPicker]     = useState(false);
+  const [mapCountry, setMapCountry]     = useState<string | null>(null);
+  const [saveStatus, setSaveStatus]     = useState<'idle' | 'saved' | 'error'>('idle');
 
   const saveTimer    = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchParams = useSearchParams();
@@ -641,12 +876,10 @@ export function GA4Dashboard() {
       try {
         const existing = await fetch(`/api/preferences?token=${token}`)
           .then(r => r.json()).then(d => d.preferences || {}).catch(() => ({}));
-        const res = await fetch(`/api/preferences?token=${token}`, {
+        await fetch(`/api/preferences?token=${token}`, {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ ...existing, ...prefs }),
         });
-        const body = await res.json();
-        if (!res.ok) throw new Error(body.error || 'Save failed');
         setSaveStatus('saved');
       } catch { setSaveStatus('error'); }
       finally { setTimeout(() => setSaveStatus('idle'), 3000); }
@@ -692,29 +925,20 @@ export function GA4Dashboard() {
           <>
             <div style={{ marginBottom: 12 }}>
               <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke={raw.ring1} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ margin: '0 auto' }}>
-                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
               </svg>
             </div>
             <p className={`${tw.text} font-bold text-lg mb-2`}>Access required</p>
-            <p className={`${tw.subtext} text-sm leading-relaxed`}>This dashboard can only be accessed through your personalised portal link. Please contact your account manager.</p>
+            <p className={`${tw.subtext} text-sm leading-relaxed`}>This dashboard can only be accessed through your personalised portal link.</p>
           </>
         ) : (
-          <>
-            <div className="text-red-400 text-4xl mb-3">⚠</div>
-            <p className={`${tw.text} font-semibold mb-1`}>Failed to load analytics</p>
-            <p className={`${tw.subtext} text-sm`}>{error}</p>
-          </>
+          <><div className="text-red-400 text-4xl mb-3">⚠</div><p className={`${tw.text} font-semibold mb-1`}>Failed to load analytics</p><p className={`${tw.subtext} text-sm`}>{error}</p></>
         )}
       </div>
     </div>
   );
 
-  if (!data?.metrics) return (
-    <div className={`min-h-screen ${tw.bg} flex items-center justify-center`}>
-      <p className={tw.subtext}>No data available</p>
-    </div>
-  );
+  if (!data?.metrics) return <div className={`min-h-screen ${tw.bg} flex items-center justify-center`}><p className={tw.subtext}>No data available</p></div>;
 
   const m    = data.metrics;
   const prev = data.previousMetrics;
@@ -725,6 +949,16 @@ export function GA4Dashboard() {
     ...d,
     date: d.date?.length === 8 ? `${d.date.substring(4,6)}/${d.date.substring(6,8)}` : d.date,
   }));
+
+  const dm = filteredTs.length > 0 ? {
+    activeUsers:        filteredTs.reduce((s, d) => s + d.activeUsers, 0),
+    sessions:           filteredTs.reduce((s, d) => s + d.sessions, 0),
+    pageViews:          filteredTs.reduce((s, d) => s + d.pageViews, 0),
+    newUsers:           filteredTs.reduce((s, d) => s + (d.newUsers ?? 0), 0),
+    bounceRate:         String((filteredTs.reduce((s, d) => s + (d.bounceRate ?? parseFloat(m.bounceRate)), 0) / filteredTs.length).toFixed(1)),
+    engagementRate:     String((filteredTs.reduce((s, d) => s + (d.engagementRate ?? parseFloat(m.engagementRate)), 0) / filteredTs.length).toFixed(1)),
+    avgSessionDuration: Math.round(filteredTs.reduce((s, d) => s + (d.avgSessionDuration ?? m.avgSessionDuration), 0) / filteredTs.length),
+  } : m;
 
   const ga4Spark = {
     activeUsers:    filteredTs.map(d => d.activeUsers ?? 0),
@@ -737,69 +971,48 @@ export function GA4Dashboard() {
   };
 
   const totalSrc = data.trafficSources.reduce((s, r) => s + r.sessions, 0);
-  const newPct   = m.sessions > 0 ? Math.round((m.newUsers / m.sessions) * 100) : 0;
+  const newPct   = dm.sessions > 0 ? Math.round((dm.newUsers / dm.sessions) * 100) : 0;
   const ringColors = [raw.ring1, raw.ring2, raw.ring3];
   const heroSet  = new Set(heroMetrics);
   const prevLabel = data.previousDateRange ? `${data.previousDateRange.startDate} → ${data.previousDateRange.endDate}` : 'previous period';
   const compareModeLabel = COMPARE_OPTIONS.find(o => o.value === compareMode)?.label ?? '';
 
   const HERO_VALUES: Record<HeroMetricId, { value: string; sub: string; pct: number }> = {
-    engagementRate: { value: `${parseFloat(m.engagementRate).toFixed(0)}%`, sub: 'of sessions',    pct: parseFloat(m.engagementRate) },
-    bounceRate:     { value: `${parseFloat(m.bounceRate).toFixed(0)}%`,     sub: 'leaving early',  pct: parseFloat(m.bounceRate) },
-    activeUsers:    { value: fmt(m.activeUsers),                             sub: `${newPct}% new`, pct: Math.min((m.activeUsers / Math.max(m.sessions, 1)) * 100, 100) },
-    sessions:       { value: fmt(m.sessions),                                sub: 'total',          pct: Math.min((m.sessions / Math.max(m.pageViews, 1)) * 100, 100) },
-    pageViews:      { value: fmt(m.pageViews),                               sub: 'total',          pct: Math.min((m.pageViews / 20000) * 100, 100) },
-    newUsers:       { value: fmt(m.newUsers),                                sub: 'first visit',    pct: Math.min((m.newUsers / Math.max(m.activeUsers, 1)) * 100, 100) },
-    avgSession:     { value: `${Math.round(m.avgSessionDuration)}s`,         sub: 'per session',    pct: Math.min((m.avgSessionDuration / 300) * 100, 100) },
-  };
-
-  const sparkColors: Record<HeroMetricId, string> = {
-    activeUsers: raw.chartLine1, sessions: raw.chartLine2, pageViews: raw.chartLine3,
-    newUsers: raw.chartLine1, bounceRate: raw.ring3, engagementRate: raw.chartLine2, avgSession: raw.ring2,
+    engagementRate: { value: `${parseFloat(dm.engagementRate).toFixed(0)}%`, sub: 'of sessions',    pct: parseFloat(dm.engagementRate) },
+    bounceRate:     { value: `${parseFloat(dm.bounceRate).toFixed(0)}%`,     sub: 'leaving early',  pct: parseFloat(dm.bounceRate) },
+    activeUsers:    { value: fmt(dm.activeUsers),                             sub: `${newPct}% new`, pct: Math.min((dm.activeUsers / Math.max(dm.sessions, 1)) * 100, 100) },
+    sessions:       { value: fmt(dm.sessions),                                sub: 'total',          pct: Math.min((dm.sessions / Math.max(dm.pageViews, 1)) * 100, 100) },
+    pageViews:      { value: fmt(dm.pageViews),                               sub: 'total',          pct: Math.min((dm.pageViews / 20000) * 100, 100) },
+    newUsers:       { value: fmt(dm.newUsers),                                sub: 'first visit',    pct: Math.min((dm.newUsers / Math.max(dm.activeUsers, 1)) * 100, 100) },
+    avgSession:     { value: `${dm.avgSessionDuration}s`,                     sub: 'per session',    pct: Math.min((dm.avgSessionDuration / 300) * 100, 100) },
   };
 
   const CARD_METRICS = [
-    { id: 'activeUsers',    title: 'Active Users',  value: m.activeUsers,                          icon: <Users size={16}/>,        prevValue: prev?.activeUsers,                                     sparkData: ga4Spark.activeUsers,    sparkColor: raw.chartLine1 },
-    { id: 'sessions',       title: 'Sessions',      value: m.sessions,                             icon: <Activity size={16}/>,     prevValue: prev?.sessions,                                        sparkData: ga4Spark.sessions,       sparkColor: raw.chartLine2 },
-    { id: 'pageViews',      title: 'Page Views',    value: m.pageViews,                            icon: <Eye size={16}/>,          prevValue: prev?.pageViews,                                       sparkData: ga4Spark.pageViews,      sparkColor: raw.chartLine3 },
-    { id: 'newUsers',       title: 'New Users',     value: m.newUsers,                             icon: <UserPlus size={16}/>,     prevValue: prev?.newUsers,                                        sparkData: ga4Spark.newUsers,       sparkColor: raw.chartLine1 },
-    { id: 'avgSession',     title: 'Avg Session',   value: Math.round(m.avgSessionDuration),       icon: <Clock size={16}/>,        prevValue: prev ? Math.round(prev.avgSessionDuration) : undefined, sparkData: ga4Spark.avgSession,     sparkColor: raw.ring2      },
-    { id: 'bounceRate',     title: 'Bounce Rate',   value: parseFloat(m.bounceRate), suffix: '%',  icon: <TrendingDown size={16}/>, prevValue: prev ? parseFloat(prev.bounceRate) : undefined, inverse: true, sparkData: ga4Spark.bounceRate, sparkColor: raw.ring3 },
-    { id: 'engagementRate', title: 'Engagement',    value: parseFloat(m.engagementRate), suffix: '%', icon: <Zap size={16}/>,      prevValue: prev ? parseFloat(prev.engagementRate) : undefined,    sparkData: ga4Spark.engagementRate, sparkColor: raw.chartLine2 },
+    { id: 'activeUsers',    title: 'Active Users',  value: dm.activeUsers,                          icon: <Users size={16}/>,        prevValue: prev?.activeUsers,                                     sparkData: ga4Spark.activeUsers,    sparkColor: raw.chartLine1 },
+    { id: 'sessions',       title: 'Sessions',      value: dm.sessions,                             icon: <Activity size={16}/>,     prevValue: prev?.sessions,                                        sparkData: ga4Spark.sessions,       sparkColor: raw.chartLine2 },
+    { id: 'pageViews',      title: 'Page Views',    value: dm.pageViews,                            icon: <Eye size={16}/>,          prevValue: prev?.pageViews,                                       sparkData: ga4Spark.pageViews,      sparkColor: raw.chartLine3 },
+    { id: 'newUsers',       title: 'New Users',     value: dm.newUsers,                             icon: <UserPlus size={16}/>,     prevValue: prev?.newUsers,                                        sparkData: ga4Spark.newUsers,       sparkColor: raw.chartLine1 },
+    { id: 'avgSession',     title: 'Avg Session',   value: dm.avgSessionDuration,                   icon: <Clock size={16}/>,        prevValue: prev ? Math.round(prev.avgSessionDuration) : undefined, sparkData: ga4Spark.avgSession,     sparkColor: raw.ring2      },
+    { id: 'bounceRate',     title: 'Bounce Rate',   value: parseFloat(dm.bounceRate), suffix: '%',  icon: <TrendingDown size={16}/>, prevValue: prev ? parseFloat(prev.bounceRate) : undefined, inverse: true, sparkData: ga4Spark.bounceRate, sparkColor: raw.ring3 },
+    { id: 'engagementRate', title: 'Engagement',    value: parseFloat(dm.engagementRate), suffix: '%', icon: <Zap size={16}/>,      prevValue: prev ? parseFloat(prev.engagementRate) : undefined,    sparkData: ga4Spark.engagementRate, sparkColor: raw.chartLine2 },
   ].filter(c => !heroSet.has(c.id as HeroMetricId)) as any[];
 
   return (
     <div className={`min-h-screen ${tw.bg} transition-colors duration-300`} style={{ color: raw.text }}>
 
-      {showPicker && (
-        <CustomizeModal
-          selected={heroMetrics}
-          onChange={changeHeroMetrics}
-          onClose={() => setShowPicker(false)}
-          tw={tw}
-          raw={raw}
-        />
-      )}
+      {showPicker && <CustomizeModal selected={heroMetrics} onChange={changeHeroMetrics} onClose={() => setShowPicker(false)} tw={tw} raw={raw} />}
 
       <header className={`sticky top-0 z-50 ${tw.headerBg} px-3 md:px-8 py-3`}>
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-[#003F27] flex items-center justify-center shrink-0">
-              <BarChart2 size={16} className="text-white" />
-            </div>
-            <div>
-              <p className={`${tw.text} font-bold text-sm leading-tight`}>{data.companyName}</p>
-              <p className={`${tw.subtext} text-xs`}>Analytics Dashboard</p>
-            </div>
+            <div className="w-8 h-8 rounded-lg bg-[#003F27] flex items-center justify-center shrink-0"><BarChart2 size={16} className="text-white" /></div>
+            <div><p className={`${tw.text} font-bold text-sm leading-tight`}>{data.companyName}</p><p className={`${tw.subtext} text-xs`}>Analytics Dashboard</p></div>
           </div>
-
           <div className="flex items-center gap-1.5 flex-wrap">
             <div className="flex gap-1 flex-wrap">
               {PRESET_RANGES.map((r, i) => (
                 <button key={i} onClick={() => { setSelectedPreset(i); setShowDatePicker(false); savePreferences({ theme, heroMetrics, mapCountry, compareMode, selectedPreset: i }); }}
-                  className={`px-2 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 ${selectedPreset === i ? tw.pillActive : tw.pillInactive}`}>
-                  {r.label}
-                </button>
+                  className={`px-2 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 ${selectedPreset === i ? tw.pillActive : tw.pillInactive}`}>{r.label}</button>
               ))}
             </div>
             <div style={{ position: 'relative' }}>
@@ -814,11 +1027,9 @@ export function GA4Dashboard() {
                 <>
                   <div style={{ position: 'fixed', inset: 0, zIndex: 290 }} onClick={() => setShowDatePicker(false)} />
                   <div style={{ position: 'fixed', top: 64, right: 16, zIndex: 300 }}>
-                    <DateRangePicker
-                      startDate={customStart} endDate={customEnd} compareMode={compareMode}
+                    <DateRangePicker startDate={customStart} endDate={customEnd} compareMode={compareMode}
                       onApply={(s, e, cmp) => { setCustomStart(s); setCustomEnd(e); setCompareMode(cmp); setSelectedPreset(null); savePreferences({ theme, heroMetrics, mapCountry, compareMode: cmp, selectedPreset: null }); }}
-                      onClose={() => setShowDatePicker(false)} tw={tw} raw={raw}
-                    />
+                      onClose={() => setShowDatePicker(false)} tw={tw} raw={raw} />
                   </div>
                 </>
               )}
@@ -846,8 +1057,7 @@ export function GA4Dashboard() {
             <TrendingUp size={12} style={{ color: raw.ring1, flexShrink: 0 }} />
             <span className={`${tw.text} font-semibold`}>Comparing to: {prevLabel}</span>
             {compareMode !== 'none' && <span className={`${tw.subtext}`}>({compareModeLabel})</span>}
-            <span className={tw.subtext}>·</span>
-            <span className={tw.subtext}>Deltas reflect change vs. comparison period</span>
+            <span className={tw.subtext}>· Deltas reflect change vs. comparison period</span>
           </div>
         )}
 
@@ -863,7 +1073,7 @@ export function GA4Dashboard() {
               const meta = ALL_HERO_METRICS.find(m => m.id === metricId)!;
               const vals = HERO_VALUES[metricId];
               return (
-                <div key={metricId} className="flex items-center gap-8 w-full justify-around md:contents">
+                <div key={`${metricId}-${activeStart}-${activeEnd}`} className="flex items-center gap-8 w-full justify-around md:contents">
                   <RingGauge value={vals.value} label={meta.label} sub={vals.sub} color={ringColors[i]} trackColor={raw.ringTrack} pct={vals.pct} size={160} />
                   {i < 2 && <div style={{ width: 1, height: 120, background: raw.border }} className="hidden md:block" />}
                 </div>
@@ -908,13 +1118,8 @@ export function GA4Dashboard() {
                   const col = raw.pieColors[i % raw.pieColors.length];
                   return (
                     <div key={i}>
-                      <div className="flex justify-between mb-1.5">
-                        <span style={{ color: raw.text, fontSize: 13 }}>{src.source}</span>
-                        <span style={{ color: col, fontSize: 13, fontWeight: 700 }}>{pct}%</span>
-                      </div>
-                      <div style={{ height: 6, background: raw.track, borderRadius: 3, overflow: 'hidden' }}>
-                        <div style={{ height: '100%', width: `${pct}%`, background: col, borderRadius: 3, transition: 'width 0.8s ease' }} />
-                      </div>
+                      <div className="flex justify-between mb-1.5"><span style={{ color: raw.text, fontSize: 13 }}>{src.source}</span><span style={{ color: col, fontSize: 13, fontWeight: 700 }}>{pct}%</span></div>
+                      <div style={{ height: 6, background: raw.track, borderRadius: 3, overflow: 'hidden' }}><div style={{ height: '100%', width: `${pct}%`, background: col, borderRadius: 3, transition: 'width 0.8s ease' }} /></div>
                     </div>
                   );
                 })}
@@ -927,19 +1132,16 @@ export function GA4Dashboard() {
               <div className="flex justify-around items-end gap-4">
                 {data.devices.map((d, i) => {
                   const col = raw.barColors[i % raw.barColors.length];
-                  const maxUsers = Math.max(...data.devices.map(x => x.users), 1);
-                  const pct = (d.users / maxUsers) * 100;
+                  const maxU = Math.max(...data.devices.map(x => x.users), 1);
                   const isTablet = d.device.toLowerCase().includes('tablet');
                   const isMobile = d.device.toLowerCase().includes('mobile');
                   return (
                     <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
                       <p style={{ color: col, fontSize: 13, fontWeight: 700 }}>{fmt(d.users)}</p>
                       <div style={{ width: 40, height: 80, background: raw.track, borderRadius: 6, overflow: 'hidden', display: 'flex', alignItems: 'flex-end' }}>
-                        <div style={{ width: '100%', height: `${pct}%`, background: col, borderRadius: '6px 6px 0 0', transition: 'height 0.8s ease', minHeight: 4 }} />
+                        <div style={{ width: '100%', height: `${(d.users / maxU) * 100}%`, background: col, borderRadius: '6px 6px 0 0', transition: 'height 0.8s ease', minHeight: 4 }} />
                       </div>
-                      <div style={{ opacity: 0.9 }}>
-                        {isTablet ? <TabletIcon color={col} /> : isMobile ? <MobileIcon color={col} /> : <DesktopIcon color={col} />}
-                      </div>
+                      <div style={{ opacity: 0.9 }}>{isTablet ? <TabletIcon color={col} /> : isMobile ? <MobileIcon color={col} /> : <DesktopIcon color={col} />}</div>
                       <p style={{ color: raw.subtext, fontSize: 11, textTransform: 'capitalize' }}>{d.device}</p>
                     </div>
                   );
@@ -949,34 +1151,13 @@ export function GA4Dashboard() {
           )}
         </div>
 
-        {data.callEvents && data.callEvents.length > 0 ? (
-          <ShineCard shineColor={raw.shineColor} className={`${tw.card} border ${tw.border} rounded-2xl p-6`}>
-            <div className="flex items-center gap-2 mb-4">
-              <Phone size={14} style={{ color: raw.ring1 }} />
-              <p className={`${tw.subtext} text-xs font-bold uppercase tracking-widest`}>Call Tracking</p>
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {data.callEvents.map((e, i) => (
-                <div key={i} className={`${tw.trackBg} rounded-xl p-4`}>
-                  <p className={`${tw.subtext} text-xs mb-1 capitalize`} style={{ fontSize: 10 }}>{e.event.replace(/_/g, ' ')}</p>
-                  <p className={`${tw.text} font-bold`} style={{ fontSize: 'clamp(1.1rem, 5vw, 1.5rem)', wordBreak: 'break-all' }}>{fmt(e.count)}</p>
-                </div>
-              ))}
-            </div>
-          </ShineCard>
-        ) : (
-          <ShineCard shineColor={raw.shineColor} className={`${tw.card} border ${tw.border} rounded-2xl p-5`}>
-            <div className="flex items-start gap-3">
-              <Phone size={16} style={{ color: raw.ring1, flexShrink: 0, marginTop: 2 }} />
-              <div>
-                <p className={`${tw.text} text-sm font-semibold mb-1`}>Call Tracking not detected</p>
-                <p className={`${tw.subtext} text-xs leading-relaxed`}>
-                  To track phone calls in GA4, create a GTM trigger on <code style={{ fontSize: 11, opacity: 0.8 }}>tel:</code> link clicks firing a custom event named <code style={{ fontSize: 11, opacity: 0.8 }}>phone_call</code>.
-                </p>
-              </div>
-            </div>
-          </ShineCard>
-        )}
+        <CallTrackingSection filteredTs={filteredTs} tw={tw} raw={raw} />
+
+        <QualifiedLeadsSection filteredTs={filteredTs} tw={tw} raw={raw} />
+
+        <ShineCard shineColor={raw.shineColor} className={`${tw.card} border ${tw.border} rounded-2xl p-4 md:p-8`}>
+          <SearchConsoleMetrics dateRange={{ start: activeStart, end: activeEnd }} theme={theme} themeStyles={{ ...tw, chartGrid: raw.border, accentText: tw.accentText }} />
+        </ShineCard>
 
         <ShineCard shineColor={raw.shineColor} className={`${tw.card} border ${tw.border} rounded-2xl p-4 md:p-8`}>
           <GoogleAdsMetrics dateRange={{ start: activeStart, end: activeEnd }} theme={theme} themeStyles={{ ...tw, chartGrid: raw.border, accentText: tw.accentText }} />
@@ -986,9 +1167,7 @@ export function GA4Dashboard() {
           <MetricoolMetrics dateRange={{ start: activeStart, end: activeEnd }} theme={theme} themeStyles={{ ...tw, chartGrid: raw.border, accentText: tw.accentText }} />
         </ShineCard>
 
-        {data.topPages.length > 0 && (
-          <TopPagesSection pages={data.topPages} tw={tw} raw={raw} />
-        )}
+        {data.topPages.length > 0 && <TopPagesSection pages={data.topPages} tw={tw} raw={raw} />}
 
         {data.countries.length > 0 && (
           <ShineCard shineColor={raw.shineColor} className={`${tw.card} border ${tw.border} rounded-2xl p-4 md:p-6`}>
