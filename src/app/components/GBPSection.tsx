@@ -156,7 +156,7 @@ export function GBPSection({ dateRange, theme, themeStyles: t }: Props) {
       <div style={{ borderRadius: 16, padding: '28px 32px', border: `1.5px solid ${colors.border}`, background: `${colors.ring1}06`, textAlign: 'center' }}>
         <p className={t.text} style={{ fontWeight: 700, fontSize: 14, marginBottom: 8, fontFamily: TW_FONT }}>Google Business Profile not connected</p>
         <p className={t.subtext} style={{ fontSize: 13, lineHeight: 1.6, maxWidth: 460, margin: '0 auto' }}>
-          Your Google Business Profile hasn't been linked yet. Ask your account manager to add your GBP Location ID to your portal settings.
+          Your Google Business Profile hasn&apos;t been linked yet. Ask your account manager to add your GBP Location ID to your portal settings.
         </p>
       </div>
     </div>

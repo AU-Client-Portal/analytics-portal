@@ -557,7 +557,7 @@ function QualifiedLeadsSection({ filteredTs, tw, raw }: {
           <div style={{ background: `${raw.ring1}07`, borderRadius: 10, padding: '12px 16px', border: `1px solid ${raw.border}`, display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{ width: 6, height: 6, borderRadius: '50%', background: raw.ring2, flexShrink: 0 }} />
             <p className={`${tw.subtext} text-xs leading-relaxed`}>
-              <strong className={tw.text}>Not set up yet.</strong> Your account manager can enable this — let them know you'd like to track form submissions and quote requests.
+              <strong className={tw.text}>Not set up yet.</strong> Your account manager can enable this — let them know you&apos;d like to track form submissions and quote requests.
             </p>
           </div>
         </div>
