@@ -68,11 +68,7 @@ export async function getSession(searchParams: SearchParams) {
 }
 
 export async function getSessionFromRoute(searchParams: URLSearchParams) {
-  console.log('DEBUG getSessionFromRoute params:', {
-    token: searchParams.get('token'),
-    companyId: searchParams.get('companyId'),
-    allParams: Object.fromEntries(searchParams.entries()),
-  });
+  console.log('PARAMS:', Object.fromEntries(searchParams.entries()));
   
   const rawToken = searchParams.get('token');
   const token =
