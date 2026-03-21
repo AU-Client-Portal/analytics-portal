@@ -1,6 +1,6 @@
 import { Container } from '@/components/Container';
 import { Demo } from '@/app/bridge/demo';
-import { getSessionFromRoute } from '@/lib/session';
+import { getSessionFromRoute } from '@/utils/session';
 
 export default async function Page({
   searchParams,
