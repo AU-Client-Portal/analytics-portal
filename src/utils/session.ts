@@ -79,13 +79,14 @@ export async function getSessionFromRoute(searchParams: URLSearchParams) {
     const apiKey = need<string>(process.env.COPILOT_API_KEY, 'COPILOT_API_KEY is required');
     const copilot = copilotApi({ apiKey });
 
-    const [workspace, company] = await Promise.all([
-      copilot.retrieveWorkspace(),
-      copilot.retrieveCompany({ id: companyId }),
-    ]);
-
+    const company = await copilot.retrieveCompany({ id: companyId });
     const companyWithFields = await attachCustomFields(copilot, company);
-    return { workspace, company: companyWithFields };
+
+    // Build a minimal workspace object rather than fetching it
+    return {
+      workspace: { id: 'admin-bypass' } as any,
+      company: companyWithFields,
+    };
   }
 
   if (!token && process.env.COPILOT_ENV === 'local' && process.env.DEV_COMPANY_ID) {
