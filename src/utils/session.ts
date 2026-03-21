@@ -74,6 +74,20 @@ export async function getSessionFromRoute(searchParams: URLSearchParams) {
       ? rawToken
       : undefined;
 
+  const companyId = searchParams.get('companyId');
+  if (!token && companyId && process.env.COPILOT_ENV !== 'local') {
+    const apiKey = need<string>(process.env.COPILOT_API_KEY, 'COPILOT_API_KEY is required');
+    const copilot = copilotApi({ apiKey });
+
+    const [workspace, company] = await Promise.all([
+      copilot.retrieveWorkspace(),
+      copilot.retrieveCompany({ id: companyId }),
+    ]);
+
+    const companyWithFields = await attachCustomFields(copilot, company);
+    return { workspace, company: companyWithFields };
+  }
+
   if (!token && process.env.COPILOT_ENV === 'local' && process.env.DEV_COMPANY_ID) {
     const apiKey = need<string>(
       process.env.COPILOT_API_KEY,
