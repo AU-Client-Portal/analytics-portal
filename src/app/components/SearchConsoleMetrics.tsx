@@ -7,7 +7,7 @@ import { Search, TrendingUp, MousePointerClick, Eye, Percent, ArrowUp, ArrowDown
 import { getMockSearchConsole } from './mockData';
 import type { Theme } from './GA4Dashboard';
 
-const USE_MOCK = true;
+const USE_MOCK = false;
 const TW_FONT = "var(--font-tomorrow), 'Tomorrow', sans-serif";
 
 interface GSCData {

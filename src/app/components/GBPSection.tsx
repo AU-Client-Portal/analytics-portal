@@ -10,7 +10,7 @@ import { Eye, Search, Phone, Navigation, Globe, Star, MapPin, TrendingUp } from 
 import { getMockGBP } from './mockData';
 import type { Theme } from './GA4Dashboard';
 
-const USE_MOCK = true;
+const USE_MOCK = false;
 const TW_FONT = "var(--font-tomorrow), 'Tomorrow', sans-serif";
 
 interface GBPMetricsData {

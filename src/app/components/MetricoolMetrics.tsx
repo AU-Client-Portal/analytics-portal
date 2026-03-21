@@ -7,7 +7,7 @@ import { Users, FileText, Heart, Radio, ThumbsUp, MessageCircle, Instagram, Link
 import { getMockMetricool } from './mockData';
 import type { Theme } from './GA4Dashboard';
 
-const USE_MOCK = true;
+const USE_MOCK = false;
 const TW_FONT = "var(--font-tomorrow), 'Tomorrow', sans-serif";
 
 interface SocialTimeSeries { date: string; reach: number; impressions: number; engagement: number; followers: number; }

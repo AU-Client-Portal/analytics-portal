@@ -18,7 +18,7 @@ import { GBPSection } from './GBPSection';
 import { WhatConvertsMetrics } from './WhatConvertsMetrics';
 import { getMockGA4 } from './mockData';
 
-const USE_MOCK = true;
+const USE_MOCK = false;
 
 export type Theme = 'light' | 'dark' | 'asquared';
 

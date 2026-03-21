@@ -7,7 +7,7 @@ import { Phone, PhoneCall, PhoneIncoming, TrendingUp, FileText } from 'lucide-re
 import { getMockWhatConverts } from './mockData';
 import type { Theme } from './GA4Dashboard';
 
-const USE_MOCK = true;
+const USE_MOCK = false;
 const TW_FONT = "var(--font-tomorrow), 'Tomorrow', sans-serif";
 
 interface WCMetrics {
