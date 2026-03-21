@@ -119,7 +119,9 @@ export function GBPSection({ dateRange, theme, themeStyles: t }: Props) {
       try {
         if (USE_MOCK) { await new Promise(r => setTimeout(r, 500)); setData(getMockGBP() as any); return; }
         const token = searchParams.get('token');
-        const res = await fetch(`/api/gbp/metrics?token=${token}&startDate=${dateRange.start}&endDate=${dateRange.end}`);
+        const companyId = searchParams.get('companyId');
+        const authParam = token ? `token=${token}` : `companyId=${companyId}`;
+        const res = await fetch(`/api/xxx/metrics?${authParam}&...`);
         if (!res.ok) { const e = await res.json(); throw new Error(e.details || e.error || 'Failed'); }
         setData(await res.json());
       } catch (err: any) {

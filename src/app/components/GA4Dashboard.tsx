@@ -657,6 +657,8 @@ export function GA4Dashboard() {
   const tw  = THEME_TW[theme];
   const raw = THEME_RAW[theme];
   const token = searchParams.get('token') ?? '';
+  const companyId = searchParams.get('companyId') ?? '';
+  const authParam = token ? `token=${token}` : `companyId=${companyId}`;
 
   const activeStart = selectedPreset !== null ? PRESET_RANGES[selectedPreset].start : customStart;
   const activeEnd   = selectedPreset !== null ? PRESET_RANGES[selectedPreset].end   : customEnd;
@@ -678,8 +680,8 @@ export function GA4Dashboard() {
         }
       }
     } catch {}
-    if (!USE_MOCK && token) {
-      fetch(`/api/preferences?token=${token}`)
+    if (!USE_MOCK && (token || companyId)) {
+      fetch(`/api/preferences?token=${authParam}`)
         .then(r => r.json())
         .then(({ preferences: p }) => {
           if (!p) return;
@@ -706,9 +708,9 @@ export function GA4Dashboard() {
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(async () => {
       try {
-        const serverPrefs = await fetch(`/api/preferences?token=${token}`).then(r => r.json()).then(d => d.preferences || {}).catch(() => ({}));
+        const serverPrefs = await fetch(`/api/preferences?token=${authParam}`).then(r => r.json()).then(d => d.preferences || {}).catch(() => ({}));
         const toSave = { ...serverPrefs, ...(patch.theme ? { theme: patch.theme } : {}), analytics: { ...(serverPrefs.analytics || {}), ...(patch.analytics || {}) } };
-        await fetch(`/api/preferences?token=${token}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(toSave) });
+        await fetch(`/api/preferences?token=${authParam}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(toSave) });
         setSaveStatus('saved');
       } catch { setSaveStatus('error'); }
       finally { setTimeout(() => setSaveStatus('idle'), 3000); }
@@ -723,11 +725,10 @@ export function GA4Dashboard() {
   useEffect(() => {
     async function fetchMetrics() {
       if (!activeStart || !activeEnd) return;
-      if (!token && !USE_MOCK) { setError('NO_TOKEN'); setLoading(false); return; }
-      setLoading(true); setError(null);
+      if (!token && !companyId && !USE_MOCK) { setError('NO_TOKEN'); setLoading(false); return; }      setLoading(true); setError(null);
       try {
         if (USE_MOCK) { await new Promise(r => setTimeout(r, 600)); setData(getMockGA4() as any); return; }
-        const res = await fetch(`/api/ga4/metrics?token=${token}&startDate=${activeStart}&endDate=${activeEnd}&compareMode=${compareMode}`);
+        const res = await fetch(`/api/ga4/metrics?token=${authParam}&startDate=${activeStart}&endDate=${activeEnd}&compareMode=${compareMode}`);
         if (!res.ok) { const e = await res.json(); throw new Error(e.error || 'Failed to load website analytics. Your account manager can check the Google Analytics connection.'); }
         setData(await res.json());
       } catch (err: any) { setError(err.message); }
