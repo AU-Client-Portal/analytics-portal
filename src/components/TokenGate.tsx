@@ -5,7 +5,10 @@ export function TokenGate({
   children: React.ReactNode;
   searchParams: SearchParams;
 }) {
-  if (!searchParams.token && process.env.COPILOT_ENV !== 'local') {
+  const hasToken = !!searchParams.token;
+  const hasCompanyId = !!searchParams.companyId;
+
+  if (!hasToken && !hasCompanyId && process.env.COPILOT_ENV !== 'local') {
     throw new Error(
       'Session Token is required, guide available at: https://docs.copilot.app/docs/custom-apps-setting-up-the-sdk#session-tokens',
     );

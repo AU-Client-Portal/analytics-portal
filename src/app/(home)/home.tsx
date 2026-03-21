@@ -1,4 +1,3 @@
-import { copilotApi } from 'copilot-node-sdk';
 import { GA4Dashboard } from '@/app/components/GA4Dashboard';
 import { TokenGate } from '@/components/TokenGate';
 
