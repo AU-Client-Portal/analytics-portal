@@ -1,22 +1,23 @@
-import { Body, Heading, Icon } from 'copilot-design-system';
 import { Container } from '@/components/Container';
 import { Demo } from '@/app/bridge/demo';
-import { copilotApi } from 'copilot-node-sdk';
+import { getSessionFromRoute } from '@/lib/session';
 
 export default async function Page({
   searchParams,
 }: {
   searchParams: SearchParams;
 }) {
-  const { token } = searchParams;
-  const copilot = copilotApi({
-    apiKey: process.env.COPILOT_API_KEY ?? '',
-    token: typeof token === 'string' ? token : undefined,
-  });
-  const workspace = await copilot.retrieveWorkspace();
+  const params = new URLSearchParams(
+    Object.entries(searchParams as Record<string, string>)
+  );
+
+  const session = await getSessionFromRoute(params);
+
+  const portalUrl = (session.workspace as any)?.portalUrl ?? '';
+
   return (
     <Container className="max-w-screen-lg">
-      <Demo portalUrl={workspace.portalUrl} />
+      <Demo portalUrl={portalUrl} />
     </Container>
   );
 }
