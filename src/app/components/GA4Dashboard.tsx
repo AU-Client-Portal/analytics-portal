@@ -44,8 +44,8 @@ function resolveDate(s: string): Date {
   if (s === 'yesterday') { d.setDate(d.getDate() - 1); return d; }
   const m = s.match(/^(\d+)daysAgo$/);
   if (m) { d.setDate(d.getDate() - parseInt(m[1])); return d; }
-  const parsed = new Date(s);
-  parsed.setHours(12, 0, 0, 0);
+  const [yr, mo, dy] = s.split('-').map(Number);
+  const parsed = new Date(yr, mo - 1, dy, 12, 0, 0, 0);
   return parsed;
 }
 
