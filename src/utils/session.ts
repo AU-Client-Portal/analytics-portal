@@ -77,15 +77,26 @@ export async function getSessionFromRoute(searchParams: URLSearchParams) {
   const companyId = searchParams.get('companyId');
   if (!token && companyId && process.env.COPILOT_ENV !== 'local') {
     const apiKey = need<string>(process.env.COPILOT_API_KEY, 'COPILOT_API_KEY is required');
-    const copilot = copilotApi({ apiKey });
 
-    const company = await copilot.retrieveCompany({ id: companyId });
-    const companyWithFields = await attachCustomFields(copilot, company);
+    // Use REST API directly — SDK requires a token even for API-key-only calls
+    const response = await fetch(
+      `https://api.copilot.app/v1/companies/${companyId}`,
+      {
+        headers: { 'X-API-Key': apiKey },
+        cache: 'no-store',
+      }
+    );
 
-    // Build a minimal workspace object rather than fetching it
+    if (!response.ok) {
+      throw new Error(`Failed to fetch company: ${response.status}`);
+    }
+
+    const company = await response.json();
+    company.customFields = company.customFields ?? company.custom_fields ?? {};
+
     return {
       workspace: { id: 'admin-bypass' } as any,
-      company: companyWithFields,
+      company,
     };
   }
 
