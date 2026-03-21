@@ -18,8 +18,6 @@ import { GBPSection } from './GBPSection';
 import { WhatConvertsMetrics } from './WhatConvertsMetrics';
 import { getMockGA4 } from './mockData';
 
-const USE_MOCK = false;
-
 export type Theme = 'light' | 'dark' | 'asquared';
 
 const TW_FONT = "var(--font-tomorrow), 'Tomorrow', sans-serif";
@@ -659,6 +657,7 @@ export function GA4Dashboard() {
   const token = searchParams.get('token') ?? '';
   const companyId = searchParams.get('companyId') ?? '';
   const authParam = token ? `token=${token}` : `companyId=${companyId}`;
+  const useMock = searchParams.get('mock') === 'true';
 
   const activeStart = selectedPreset !== null ? PRESET_RANGES[selectedPreset].start : customStart;
   const activeEnd   = selectedPreset !== null ? PRESET_RANGES[selectedPreset].end   : customEnd;
@@ -680,7 +679,7 @@ export function GA4Dashboard() {
         }
       }
     } catch {}
-    if (!USE_MOCK && (token || companyId)) {
+    if (!useMock && (token || companyId)) {
       fetch(`/api/preferences?${authParam}`)
         .then(r => r.json())
         .then(({ preferences: p }) => {
@@ -704,7 +703,7 @@ export function GA4Dashboard() {
     const existing: any = (() => { try { return JSON.parse(localStorage.getItem('dashboard-prefs') || '{}'); } catch { return {}; } })();
     const merged = { ...existing, ...(patch.theme ? { theme: patch.theme } : {}), analytics: { ...(existing.analytics || {}), ...(patch.analytics || {}) } };
     localStorage.setItem('dashboard-prefs', JSON.stringify(merged));
-    if (USE_MOCK || !token) return;
+    if (useMock || !token) return;
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(async () => {
       try {
@@ -725,9 +724,9 @@ export function GA4Dashboard() {
   useEffect(() => {
     async function fetchMetrics() {
       if (!activeStart || !activeEnd) return;
-      if (!token && !companyId && !USE_MOCK) { setError('NO_TOKEN'); setLoading(false); return; }      setLoading(true); setError(null);
+      if (!token && !companyId && !useMock) { setError('NO_TOKEN'); setLoading(false); return; }      setLoading(true); setError(null);
       try {
-        if (USE_MOCK) { await new Promise(r => setTimeout(r, 600)); setData(getMockGA4() as any); return; }
+        if (useMock) { await new Promise(r => setTimeout(r, 600)); setData(getMockGA4() as any); return; }
         const res = await fetch(`/api/ga4/metrics?${authParam}&startDate=${activeStart}&endDate=${activeEnd}&compareMode=${compareMode}`);
         if (!res.ok) { const e = await res.json(); throw new Error(e.error || 'Failed to load website analytics. Your account manager can check the Google Analytics connection.'); }
         setData(await res.json());

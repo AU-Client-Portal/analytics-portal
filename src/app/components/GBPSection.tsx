@@ -10,7 +10,6 @@ import { Eye, Search, Phone, Navigation, Globe, Star, MapPin, TrendingUp } from 
 import { getMockGBP } from './mockData';
 import type { Theme } from './GA4Dashboard';
 
-const USE_MOCK = false;
 const TW_FONT = "var(--font-tomorrow), 'Tomorrow', sans-serif";
 
 interface GBPMetricsData {
@@ -117,11 +116,12 @@ export function GBPSection({ dateRange, theme, themeStyles: t }: Props) {
     async function load() {
       setLoading(true); setError(null);
       try {
-        if (USE_MOCK) { await new Promise(r => setTimeout(r, 500)); setData(getMockGBP() as any); return; }
         const token = searchParams.get('token');
         const companyId = searchParams.get('companyId');
+        const mock = searchParams.get('mock') === 'true';
+        if (mock) { await new Promise(r => setTimeout(r, 500)); setData(getMockGBP() as any); return; }
         const authParam = token ? `token=${token}` : `companyId=${companyId}`;
-        const res = await fetch(`/api/xxx/metrics?${authParam}&...`);
+        const res = await fetch(`/api/gbp/metrics?${authParam}&startDate=${dateRange.start}&endDate=${dateRange.end}`);
         if (!res.ok) { const e = await res.json(); throw new Error(e.details || e.error || 'Failed'); }
         setData(await res.json());
       } catch (err: any) {

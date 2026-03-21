@@ -7,7 +7,6 @@ import { Phone, PhoneCall, PhoneIncoming, TrendingUp, FileText } from 'lucide-re
 import { getMockWhatConverts } from './mockData';
 import type { Theme } from './GA4Dashboard';
 
-const USE_MOCK = false;
 const TW_FONT = "var(--font-tomorrow), 'Tomorrow', sans-serif";
 
 interface WCMetrics {
@@ -56,11 +55,12 @@ export function WhatConvertsMetrics({ dateRange, theme, themeStyles: t }: Props)
     async function load() {
       setLoading(true); setError(null);
       try {
-        if (USE_MOCK) { await new Promise(r => setTimeout(r, 400)); setData(getMockWhatConverts() as any); return; }
         const token = searchParams.get('token');
         const companyId = searchParams.get('companyId');
+        const mock = searchParams.get('mock') === 'true';
+        if (mock) { await new Promise(r => setTimeout(r, 400)); setData(getMockWhatConverts() as any); return; }
         const authParam = token ? `token=${token}` : `companyId=${companyId}`;
-        const res = await fetch(`/api/xxx/metrics?${authParam}&...`);
+        const res = await fetch(`/api/whatconverts/metrics?${authParam}&startDate=${dateRange.start}&endDate=${dateRange.end}`);
         if (!res.ok) { const e = await res.json(); throw new Error(e.details || e.error || 'Failed'); }
         setData(await res.json());
       } catch (err: any) { setError(err.message); }
