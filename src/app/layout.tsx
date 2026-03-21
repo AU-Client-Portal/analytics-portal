@@ -1,24 +1,30 @@
-import './globals.css';
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
+import { Tomorrow, Inter } from 'next/font/google';
+import './globals.css';
 
-const inter = Inter({ subsets: ['latin'] });
+const tomorrow = Tomorrow({
+  subsets: ['latin'],
+  weight: ['600', '700', '800'],
+  variable: '--font-tomorrow',
+  display: 'swap',
+});
 
-import 'copilot-design-system/dist/styles/main.css';
+const inter = Inter({
+  subsets: ['latin'],
+  weight: ['400', '500', '600'],
+  variable: '--font-inter',
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
-  title: 'Custom App',
-  description: 'Copilot Custom App Example',
+  title: 'Analytics Dashboard',
+  description: 'Marketing analytics powered by A Squared',
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body className={[inter.className].join(' ')}>{children}</body>
+    <html lang="en" className={`${tomorrow.variable} ${inter.variable}`}>
+      <body>{children}</body>
     </html>
   );
 }

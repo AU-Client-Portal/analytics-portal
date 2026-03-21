@@ -4,10 +4,11 @@ import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { AreaChart, Area, ResponsiveContainer } from 'recharts';
 import { Users, FileText, Heart, Radio, ThumbsUp, MessageCircle, Instagram, Linkedin, Facebook, Twitter, Share2, Eye } from 'lucide-react';
-import { MOCK_METRICOOL } from './mockData';
+import { getMockMetricool } from './mockData';
 import type { Theme } from './GA4Dashboard';
 
 const USE_MOCK = true;
+const TW_FONT = "var(--font-tomorrow), 'Tomorrow', sans-serif";
 
 interface SocialTimeSeries { date: string; reach: number; impressions: number; engagement: number; followers: number; }
 interface MetricoolData {
@@ -25,11 +26,14 @@ interface Props {
 
 function resolveDate(s: string): Date {
   const d = new Date();
+  d.setHours(12, 0, 0, 0);
   if (s === 'today') return d;
   if (s === 'yesterday') { d.setDate(d.getDate() - 1); return d; }
   const m = s.match(/^(\d+)daysAgo$/);
   if (m) { d.setDate(d.getDate() - parseInt(m[1])); return d; }
-  return new Date(s);
+  const parsed = new Date(s);
+  parsed.setHours(12, 0, 0, 0);
+  return parsed;
 }
 
 function filterSeries<T extends { date: string }>(ts: T[], start: string, end: string): T[] {
@@ -38,21 +42,25 @@ function filterSeries<T extends { date: string }>(ts: T[], start: string, end: s
   const e = resolveDate(end);   e.setHours(23, 59, 59, 999);
   return ts.filter(row => {
     const r = row.date;
-    const parsed = r.length === 8
-      ? new Date(+r.slice(0, 4), +r.slice(4, 6) - 1, +r.slice(6, 8))
-      : new Date(r);
+    let parsed: Date;
+    if (r.length === 8) {
+      parsed = new Date(+r.slice(0,4), +r.slice(4,6)-1, +r.slice(6,8), 12, 0, 0, 0);
+    } else {
+      const [yr, mo, dy] = r.split('-').map(Number);
+      parsed = new Date(yr, mo-1, dy, 12, 0, 0, 0);
+    }
     return parsed >= s && parsed <= e;
   });
 }
 
 const ACCENT: Record<Theme, { ring1: string; ring2: string; ring3: string; ring4: string; track: string; border: string }> = {
-  light:  { ring1: '#003F27', ring2: '#f59e0b', ring3: '#ef4444', ring4: '#3b82f6', track: '#e8ecf0', border: '#dde2e8' },
-  dark:   { ring1: '#4ade80', ring2: '#fbbf24', ring3: '#f87171', ring4: '#60a5fa', track: '#2c3040', border: '#2c3040' },
-  forest: { ring1: '#003F27', ring2: '#b5832a', ring3: '#9b4a20', ring4: '#5a8fa8', track: '#e8d5b7', border: '#d4b896' },
+  light:    { ring1: '#F26C00', ring2: '#2D2926', ring3: '#8A7A70', ring4: '#B05000', track: '#E8E7E5', border: '#D9D8D6' },
+  dark:     { ring1: '#F26C00', ring2: '#D9D8D6', ring3: '#FF9040', ring4: '#FFB060', track: '#3D3530', border: '#3D3530' },
+  asquared: { ring1: '#F26C00', ring2: '#FFB060', ring3: '#D9D8D6', ring4: '#FF8030', track: '#4A2810', border: '#6B3A18' },
 };
 
 const NETWORK_COLORS: Record<string, string> = {
-  Instagram: '#e1306c', Facebook: '#1877f2', LinkedIn: '#0a66c2', Twitter: '#1da1f2', Default: '#6b7a8d',
+  Instagram: '#e1306c', Facebook: '#1877f2', LinkedIn: '#0a66c2', Twitter: '#1da1f2', Default: '#8A7A70',
 };
 
 function NetworkIcon({ network }: { network: string }) {
@@ -82,15 +90,14 @@ function SocialCard({ title, value, icon, index, accentColor, t, sparkData }: {
   return (
     <div
       onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}
-      style={{ opacity: visible ? 1 : 0, transform: visible ? 'translateY(0) scale(1)' : 'translateY(18px) scale(0.96)', transition: 'opacity 0.5s ease, transform 0.5s cubic-bezier(0.34,1.56,0.64,1)', transitionDelay: `${index * 70}ms`, boxShadow: hovered ? `0 10px 36px ${accentColor}30` : '0 1px 4px rgba(0,0,0,0.05)', borderColor: hovered ? accentColor : undefined, overflow: 'hidden' }}
-      className={`${t.card} border ${t.border} rounded-2xl cursor-default`}
-    >
+      style={{ opacity: visible ? 1 : 0, transform: visible ? 'translateY(0) scale(1)' : 'translateY(18px) scale(0.96)', transition: `opacity 0.5s ease ${index * 70}ms, transform 0.5s cubic-bezier(0.34,1.56,0.64,1) ${index * 70}ms`, boxShadow: hovered ? `0 10px 36px ${accentColor}30` : '0 1px 4px rgba(0,0,0,0.05)', overflow: 'hidden' }}
+      className={`${t.card} border ${t.border} rounded-2xl cursor-default`}>
       <div style={{ padding: '12px 14px 8px' }}>
         <div className="flex items-start justify-between mb-2">
           <span className={`${t.subtext} font-semibold uppercase tracking-widest leading-tight`} style={{ fontSize: 10 }}>{title}</span>
           <span style={{ color: accentColor, transform: hovered ? 'scale(1.25) rotate(-8deg)' : 'scale(1)', transition: 'transform 0.3s cubic-bezier(0.34,1.56,0.64,1)', opacity: hovered ? 1 : 0.5, flexShrink: 0, marginLeft: 4 }}>{icon}</span>
         </div>
-        <p className={`${t.text} font-bold tracking-tight`} style={{ fontSize: 'clamp(0.9rem, 4vw, 1.5rem)', wordBreak: 'break-all', color: hovered ? accentColor : undefined, transition: 'color 0.2s', lineHeight: 1.15 }}>{value}</p>
+        <p className={`${t.text} font-bold tracking-tight`} style={{ fontSize: 'clamp(0.9rem, 4vw, 1.5rem)', wordBreak: 'break-all', color: hovered ? accentColor : undefined, transition: 'color 0.2s', lineHeight: 1.15, fontFamily: TW_FONT }}>{value}</p>
       </div>
       {sparkData && sparkData.length > 1 && (
         <div style={{ height: 36 }}>
@@ -118,7 +125,7 @@ function PostCard({ post, index, colors, t }: { post: any; index: number; colors
   useEffect(() => { const timer = setTimeout(() => setVisible(true), 200 + index * 110); return () => clearTimeout(timer); }, [index]);
   return (
     <div onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}
-      style={{ opacity: visible ? 1 : 0, transform: visible ? 'translateX(0)' : 'translateX(24px)', transition: 'opacity 0.45s ease, transform 0.45s ease', transitionDelay: `${index * 90}ms`, boxShadow: hovered ? '0 6px 24px rgba(0,0,0,0.12)' : '0 1px 3px rgba(0,0,0,0.04)' }}
+      style={{ opacity: visible ? 1 : 0, transform: visible ? 'translateX(0)' : 'translateX(24px)', transition: `opacity 0.45s ease ${index * 90}ms, transform 0.45s ease ${index * 90}ms`, boxShadow: hovered ? '0 6px 24px rgba(0,0,0,0.12)' : '0 1px 3px rgba(0,0,0,0.04)' }}
       className={`${t.card} border ${t.border} rounded-2xl p-4`}>
       <div className="flex items-start gap-3">
         <div style={{ width: 34, height: 34, borderRadius: 10, background: `${netColor}18`, border: `1.5px solid ${netColor}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: netColor, flexShrink: 0, transform: hovered ? 'scale(1.1) rotate(-5deg)' : 'scale(1)', transition: 'transform 0.3s cubic-bezier(0.34,1.56,0.64,1)' }}>
@@ -133,8 +140,8 @@ function PostCard({ post, index, colors, t }: { post: any; index: number; colors
         </div>
         {(post.likes !== undefined || post.comments !== undefined) && (
           <div className="flex flex-col gap-1.5 shrink-0 items-end">
-            {post.likes !== undefined && <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}><ThumbsUp size={11} style={{ color: colors.ring1 }} /><span style={{ fontSize: 12, fontWeight: 700, color: colors.ring1 }}>{fmtNum(post.likes)}</span></div>}
-            {post.comments !== undefined && <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}><MessageCircle size={11} style={{ color: colors.ring2 }} /><span style={{ fontSize: 12, fontWeight: 700, color: colors.ring2 }}>{fmtNum(post.comments)}</span></div>}
+            {post.likes    !== undefined && <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}><ThumbsUp     size={11} style={{ color: colors.ring1 }} /><span style={{ fontSize: 12, fontWeight: 700, color: colors.ring1, fontFamily: TW_FONT }}>{fmtNum(post.likes)}</span></div>}
+            {post.comments !== undefined && <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}><MessageCircle size={11} style={{ color: colors.ring2 }} /><span style={{ fontSize: 12, fontWeight: 700, color: colors.ring2, fontFamily: TW_FONT }}>{fmtNum(post.comments)}</span></div>}
           </div>
         )}
       </div>
@@ -147,25 +154,18 @@ function PostCard({ post, index, colors, t }: { post: any; index: number; colors
   );
 }
 
-function classifyMetricoolError(message: string): 'not_configured' | 'api_error' | 'other' {
-  const m = message?.toLowerCase() ?? '';
-  if (m.includes('metricool is not configured') || m.includes('metricool credentials')) return 'not_configured';
-  if (m.includes('metricool api error')) return 'api_error';
-  return 'other';
-}
-
 export function MetricoolMetrics({ dateRange, theme, themeStyles: t }: Props) {
   const [data, setData]       = useState<MetricoolData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState<string | null>(null);
   const searchParams = useSearchParams();
-  const colors = ACCENT[theme] ?? ACCENT.forest;
+  const colors = ACCENT[theme] ?? ACCENT.light;
 
   useEffect(() => {
-    async function fetch_() {
+    async function load() {
       setLoading(true); setError(null);
       try {
-        if (USE_MOCK) { await new Promise(r => setTimeout(r, 700)); setData(MOCK_METRICOOL as any); return; }
+        if (USE_MOCK) { await new Promise(r => setTimeout(r, 700)); setData(getMockMetricool() as any); return; }
         const token = searchParams.get('token');
         const res = await fetch(`/api/metricool/metrics?token=${token}&startDate=${dateRange.start}&endDate=${dateRange.end}`);
         if (!res.ok) { const e = await res.json(); throw new Error(e.details || e.error || 'Failed'); }
@@ -173,36 +173,40 @@ export function MetricoolMetrics({ dateRange, theme, themeStyles: t }: Props) {
       } catch (err: any) { setError(err.message); }
       finally { setLoading(false); }
     }
-    fetch_();
+    load();
   }, [searchParams, dateRange]);
 
   if (loading) return (
     <div className="flex items-center gap-3 py-10">
-      <div style={{ width: 20, height: 20, borderRadius: '50%', border: `2px solid ${colors.ring1}30`, borderTop: `2px solid ${colors.ring1}`, animation: 'spin 0.7s linear infinite' }} />
+      <div style={{ width: 20, height: 20, borderRadius: '50%', border: `2px solid ${colors.ring1}30`, borderTop: `2px solid ${colors.ring1}`, animation: 'metSpin 0.7s linear infinite' }} />
       <span className={`${t.subtext} text-sm`}>Loading social media…</span>
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <style>{`@keyframes metSpin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 
   if (error) {
-    const type = classifyMetricoolError(error);
-    const s = { borderRadius: 16, padding: '28px 32px', border: `1.5px solid ${colors.border}`, background: `${colors.ring1}06`, textAlign: 'center' as const };
+    const m = error?.toLowerCase() ?? '';
+    let title = 'Social media unavailable';
+    let msg = "We couldn't load your social media data. Please contact your account manager if this continues.";
+    if (m.includes('not configured') || m.includes('credentials')) {
+      title = 'Social media not connected';
+      msg = "Your Metricool account hasn't been linked to this dashboard yet. Ask your account manager to connect it — they'll need your Metricool Blog ID from your account settings.";
+    }
     return (
       <div className="space-y-4">
-        <h2 className={`${t.text} text-xl font-bold tracking-tight`}>Social Media Performance</h2>
-        {type === 'not_configured'
-          ? <div style={s}><p className={t.text} style={{ fontWeight: 700, fontSize: 15, marginBottom: 8 }}>Social media not connected</p><p className={t.subtext} style={{ fontSize: 13, lineHeight: 1.6 }}>Your social media accounts haven&apos;t been linked to this dashboard yet. Contact your account manager.</p></div>
-          : <div style={s}><p className={t.text} style={{ fontWeight: 700, fontSize: 15, marginBottom: 8 }}>Social media unavailable</p><p className={t.subtext} style={{ fontSize: 13, lineHeight: 1.6 }}>We couldn&apos;t load your social media data. Please contact your account manager if this continues.</p></div>
-        }
+        <h2 className={`${t.text} text-xl font-bold tracking-tight`} style={{ fontFamily: TW_FONT }}>Social Media Performance</h2>
+        <div style={{ borderRadius: 16, padding: '28px 32px', border: `1.5px solid ${colors.border}`, background: `${colors.ring1}06`, textAlign: 'center' }}>
+          <p className={t.text} style={{ fontWeight: 700, fontSize: 15, marginBottom: 8, fontFamily: TW_FONT }}>{title}</p>
+          <p className={t.subtext} style={{ fontSize: 13, lineHeight: 1.6, maxWidth: 460, margin: '0 auto' }}>{msg}</p>
+        </div>
       </div>
     );
   }
 
-  if (!data) return <p className={`${t.subtext} text-sm py-4`}>No social media data available.</p>;
+  if (!data) return <p className={`${t.subtext} text-sm py-4`}>No social media data available for this period.</p>;
 
   const stats = data.stats || {};
   const posts = data.posts || [];
-
   const filteredTs = filterSeries(data.timeSeries ?? [], dateRange.start, dateRange.end);
 
   const dm = filteredTs.length > 0 ? {
@@ -225,22 +229,18 @@ export function MetricoolMetrics({ dateRange, theme, themeStyles: t }: Props) {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h2 className={`${t.text} text-xl font-bold tracking-tight`}>Social Media Performance</h2>
-      </div>
-
+      <h2 className={`${t.text} text-xl font-bold tracking-tight`} style={{ fontFamily: TW_FONT }}>Social Media Performance</h2>
       <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-3">
-        <SocialCard title="Followers"   value={fmtNum(dm.totalFollowers)}                                       icon={<Users size={15}/>}    index={0} accentColor={accents[0]} t={t} sparkData={sparks.followers} />
-        <SocialCard title="Total Posts" value={fmtNum(dm.totalPosts)}                                           icon={<FileText size={15}/>} index={1} accentColor={accents[1]} t={t} />
-        <SocialCard title="Total Reach" value={fmtNum(dm.totalReach)}                                           icon={<Eye size={15}/>}      index={2} accentColor={accents[2]} t={t} sparkData={sparks.reach} />
-        <SocialCard title="Engagement"  value={dm.engagementRate ? `${dm.engagementRate.toFixed(2)}%` : '—'}    icon={<Heart size={15}/>}    index={3} accentColor={accents[3]} t={t} sparkData={sparks.engagement} />
-        <SocialCard title="Impressions" value={fmtNum(dm.totalImpressions)}                                     icon={<Radio size={15}/>}    index={4} accentColor={accents[4]} t={t} sparkData={sparks.impressions} />
-        <SocialCard title="Shares"      value={fmtNum(dm.totalShares)}                                          icon={<Share2 size={15}/>}   index={5} accentColor={accents[5]} t={t} />
+        <SocialCard title="Followers"   value={fmtNum(dm.totalFollowers)}                                    icon={<Users size={15}/>}    index={0} accentColor={accents[0]} t={t} sparkData={sparks.followers} />
+        <SocialCard title="Total Posts" value={fmtNum(dm.totalPosts)}                                        icon={<FileText size={15}/>} index={1} accentColor={accents[1]} t={t} />
+        <SocialCard title="Total Reach" value={fmtNum(dm.totalReach)}                                        icon={<Eye size={15}/>}      index={2} accentColor={accents[2]} t={t} sparkData={sparks.reach} />
+        <SocialCard title="Engagement"  value={dm.engagementRate ? `${dm.engagementRate.toFixed(2)}%` : '—'} icon={<Heart size={15}/>}    index={3} accentColor={accents[3]} t={t} sparkData={sparks.engagement} />
+        <SocialCard title="Impressions" value={fmtNum(dm.totalImpressions)}                                  icon={<Radio size={15}/>}    index={4} accentColor={accents[4]} t={t} sparkData={sparks.impressions} />
+        <SocialCard title="Shares"      value={fmtNum(dm.totalShares)}                                       icon={<Share2 size={15}/>}   index={5} accentColor={accents[5]} t={t} />
       </div>
-
       {posts.length > 0 && (
         <div>
-          <h3 className={`${t.text} text-base font-bold mb-4`}>Recent Posts</h3>
+          <h3 className={`${t.text} text-base font-bold mb-4`} style={{ fontFamily: TW_FONT }}>Recent Posts</h3>
           <div className="space-y-3">
             {posts.slice(0, 5).map((post: any, i: number) => <PostCard key={i} post={post} index={i} colors={colors} t={t} />)}
           </div>

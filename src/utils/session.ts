@@ -19,6 +19,7 @@ async function attachCustomFields(
     const data = await response.json();
     company.customFields = data.customFields ?? data.custom_fields ?? {};
   } catch (err) {
+    console.error('Failed to fetch custom field values:', err);
     company.customFields = {};
   }
 
@@ -73,29 +74,34 @@ export async function getSessionFromRoute(searchParams: URLSearchParams) {
       ? rawToken
       : undefined;
 
-  if (!token) {
-    if (process.env.COPILOT_ENV === 'local' && process.env.DEV_COMPANY_ID) {
-      const apiKey = need<string>(
-        process.env.COPILOT_API_KEY,
-        'COPILOT_API_KEY is required',
-      );
+  if (!token && process.env.COPILOT_ENV === 'local' && process.env.DEV_COMPANY_ID) {
+    const apiKey = need<string>(
+      process.env.COPILOT_API_KEY,
+      'COPILOT_API_KEY is required',
+    );
 
-      const copilot = copilotApi({ apiKey });
+    const copilot = copilotApi({ apiKey });
 
-      const [workspace, company] = await Promise.all([
-        copilot.retrieveWorkspace(),
-        copilot.retrieveCompany({ id: process.env.DEV_COMPANY_ID }),
-      ]);
+    const [workspace, company] = await Promise.all([
+      copilot.retrieveWorkspace(),
+      copilot.retrieveCompany({ id: process.env.DEV_COMPANY_ID }),
+    ]);
 
-      const companyWithFields = await attachCustomFields(copilot, company);
+    const companyWithFields = await attachCustomFields(copilot, company);
 
-      return { workspace, company: companyWithFields };
-    }
-
-    return { workspace: { id: 'admin' } as any };
+    return { workspace, company: companyWithFields };
   }
 
-  return getSession({ token });
+  return getSession(token ? { token } : {});
+}
+
+function getField(fields: Record<string, any>, canonical: string): string | null {
+  if (fields[canonical] != null && fields[canonical] !== '') return String(fields[canonical]);
+  const lc = canonical.toLowerCase();
+  for (const [key, val] of Object.entries(fields)) {
+    if (key.toLowerCase() === lc && val != null && val !== '') return String(val);
+  }
+  return null;
 }
 
 export function getCompanyConfig(session: Awaited<ReturnType<typeof getSession>>) {
@@ -103,14 +109,14 @@ export function getCompanyConfig(session: Awaited<ReturnType<typeof getSession>>
 
   const fields = (session.company as any).customFields ?? {};
 
-  // For Vercel Logs
   console.log('Custom fields received:', JSON.stringify(fields));
 
   return {
-    companyId: session.company.id,
-    name: (session.company as any).name ?? 'Unknown Company',
-    ga4PropertyId: fields.ga4PropertyId ?? fields.ga4Propertyid ?? null,
-    adsCustomerId: fields.adsCustomerId ?? fields.adsCustomerid ?? fields.adscustomerid ?? null,
-    metricoolBlogId: fields.metricoolBlogId ?? fields.metricoolBlogid ?? fields.metricoolblogid ?? null,
+    companyId:              session.company.id,
+    name:                   (session.company as any).name ?? 'Unknown Company',
+    ga4PropertyId:          getField(fields, 'ga4PropertyId'),
+    metricoolBlogId:        getField(fields, 'metricoolBlogId'),
+    gbpLocationId:          getField(fields, 'gbpLocationId'),
+    whatConvertsAccountId:  getField(fields, 'whatConvertsAccountId'),
   };
 }
